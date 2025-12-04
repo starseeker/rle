@@ -206,7 +206,8 @@ void test_invalid_file_read() {
     rle::RLECodec codec;
     rle::Image img;
     
-    rle::ErrorCode result = codec.read("/nonexistent/path/file.rle", img);
+    // Use a relative path that's unlikely to exist on any platform
+    rle::ErrorCode result = codec.read("nonexistent_test_file_12345.rle", img);
     EXPECT_EQ(result, rle::ErrorCode::FILE_NOT_FOUND);
     EXPECT_FALSE(codec.get_last_error().empty());
     
@@ -220,7 +221,8 @@ void test_invalid_image_write() {
     rle::RLECodec codec;
     rle::Image invalid_img;  // Default constructed, invalid
     
-    rle::ErrorCode result = codec.write("/tmp/invalid.rle", invalid_img);
+    // Test validation happens before file creation
+    rle::ErrorCode result = codec.write("invalid_test_image.rle", invalid_img);
     EXPECT_EQ(result, rle::ErrorCode::INVALID_DIMENSIONS);
     
     END_TEST();
