@@ -1,2 +1,0 @@
-/usr/bin/ar qc librle_lib.a CMakeFiles/rle_lib.dir/rle.cpp.o
-/usr/bin/ranlib librle_lib.a
