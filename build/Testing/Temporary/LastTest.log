@@ -1,0 +1,40 @@
+Start testing: Dec 04 22:03 UTC
+----------------------------------------------------------
+1/1 Testing: test_rle
+1/1 Test: test_rle
+Command: "/home/runner/work/rle/rle/build/test_rle"
+Directory: /home/runner/work/rle/rle/build
+"test_rle" start time: Dec 04 22:03 UTC
+Output:
+----------------------------------------------------------
+========================================
+RLE Codec Test Harness
+========================================
+
+TEST: Error code strings ... PASSED
+TEST: Image structure ... PASSED
+TEST: Simple encode/decode ... PASSED
+TEST: Empty data encode/decode ... PASSED
+TEST: Run-length encoding efficiency ... PASSED
+TEST: Diverse data encode/decode ... PASSED
+TEST: Image file I/O roundtrip ... PASSED
+TEST: Invalid file read error handling ... PASSED
+TEST: Invalid image write error handling ... PASSED
+TEST: Pattern data encode/decode ... PASSED
+TEST: Utah RLE comparison (placeholder) ... SKIPPED (not implemented yet)
+
+========================================
+Test Summary:
+  Total:  11
+  Passed: 11
+  Failed: 0
+========================================
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"test_rle" end time: Dec 04 22:03 UTC
+"test_rle" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Dec 04 22:03 UTC
