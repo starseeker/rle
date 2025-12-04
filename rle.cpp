@@ -200,16 +200,15 @@ ErrorCode RLECodec::decode(const std::vector<uint8_t>& input, std::vector<uint8_
     try {
         size_t i = 0;
         while (i < input.size()) {
-            if (i >= input.size()) {
-                set_error("Unexpected end of encoded data");
-                return ErrorCode::INVALID_FORMAT;
-            }
-            
             uint8_t count_byte = input[i++];
             
             if (count_byte >= 128) {
                 // Run of repeated values
                 size_t count = count_byte - 128;
+                if (count == 0) {
+                    set_error("Invalid run count (must be >= 1)");
+                    return ErrorCode::INVALID_FORMAT;
+                }
                 if (i >= input.size()) {
                     set_error("Invalid run encoding");
                     return ErrorCode::INVALID_FORMAT;
@@ -221,6 +220,10 @@ ErrorCode RLECodec::decode(const std::vector<uint8_t>& input, std::vector<uint8_
             } else {
                 // Literal values
                 size_t count = count_byte;
+                if (count == 0) {
+                    set_error("Invalid literal count (must be >= 1)");
+                    return ErrorCode::INVALID_FORMAT;
+                }
                 if (i + count > input.size()) {
                     set_error("Invalid literal encoding");
                     return ErrorCode::INVALID_FORMAT;

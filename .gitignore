@@ -28,3 +28,4 @@ Thumbs.db
 # Test outputs
 /tmp/
 *.rle
+test_image_roundtrip.rle

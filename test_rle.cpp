@@ -181,7 +181,8 @@ void test_image_roundtrip() {
     }
     
     rle::RLECodec codec;
-    const std::string test_file = "/tmp/test_image.rle";
+    // Use a relative path that works on all platforms
+    const std::string test_file = "test_image_roundtrip.rle";
     
     // Write image
     rle::ErrorCode result = codec.write(test_file, original);
@@ -256,9 +257,39 @@ void test_pattern_data() {
     END_TEST();
 }
 
+// Test invalid encoded data
+void test_invalid_encoded_data() {
+    TEST("Invalid encoded data error handling");
+    
+    rle::RLECodec codec;
+    std::vector<uint8_t> decoded;
+    
+    // Test zero-length run (count_byte = 128 means count = 0)
+    std::vector<uint8_t> invalid_run = {128, 42};
+    rle::ErrorCode result = codec.decode(invalid_run, decoded);
+    EXPECT_EQ(result, rle::ErrorCode::INVALID_FORMAT);
+    
+    // Test zero-length literal (count_byte = 0)
+    std::vector<uint8_t> invalid_literal = {0};
+    result = codec.decode(invalid_literal, decoded);
+    EXPECT_EQ(result, rle::ErrorCode::INVALID_FORMAT);
+    
+    // Test truncated run
+    std::vector<uint8_t> truncated_run = {131};  // Needs a value byte
+    result = codec.decode(truncated_run, decoded);
+    EXPECT_EQ(result, rle::ErrorCode::INVALID_FORMAT);
+    
+    // Test truncated literal
+    std::vector<uint8_t> truncated_literal = {3, 1, 2};  // Says 3 bytes but only has 2
+    result = codec.decode(truncated_literal, decoded);
+    EXPECT_EQ(result, rle::ErrorCode::INVALID_FORMAT);
+    
+    END_TEST();
+}
+
 // Placeholder for future utahrle comparison tests
 void test_utahrle_comparison() {
-    TEST("Utah RLE comparison (placeholder)");
+    std::cout << "TEST: Utah RLE comparison (placeholder) ... ";
     
     // TODO: Once utahrle integration is complete, add comparison tests here
     // This will involve:
@@ -288,6 +319,7 @@ int main() {
     test_invalid_file_read();
     test_invalid_image_write();
     test_pattern_data();
+    test_invalid_encoded_data();
     test_utahrle_comparison();
     
     // Print summary
