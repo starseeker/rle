@@ -277,7 +277,11 @@ inline bool write_header(FILE* f, const Header& h) {
         for (uint8_t v : h.background) if (!write_u8(f, v)) return false;
         if (h.background.size() & 0x01) if (!write_u8(f, 0)) return false;
     } else {
-        /* Utah RLE writes a single null byte when NO_BACKGROUND flag is set */
+        /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
+         * a single null byte when NO_BACKGROUND flag is set, even though the
+         * format specification suggests no background data should be present.
+         * This behavior is found in utahrle/Runput.c line ~220.
+         * We replicate this for compatibility. */
         if (!write_u8(f, 0)) return false;
     }
     if (h.ncmap > 0) {
@@ -317,7 +321,11 @@ inline bool read_header_single(FILE* f, Header& h, Endian e, Error& err) {
             if (!rd8(pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
         }
     } else {
-        /* Utah RLE writes a single null byte when NO_BACKGROUND flag is set */
+        /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
+         * a single null byte when NO_BACKGROUND flag is set, even though the
+         * format specification suggests no background data should be present.
+         * This behavior is found in utahrle/Runput.c line ~220.
+         * We must read this byte for compatibility. */
         uint8_t null_byte;
         if (!rd8(null_byte)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
     }

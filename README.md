@@ -98,48 +98,48 @@ codec.decode(encoded, decoded);
 
 ## Testing Framework
 
-The test harness (`test_rle.cpp`) provides:
+The test harness (`test_rle.cpp`) provides comprehensive validation of the rle.hpp implementation and its compatibility with the Utah RLE reference library (utahrle).
 
-### Current Test Coverage
+### Test Coverage (19 Tests - All Passing)
+
+#### Basic API Tests
 - ✅ Error code string validation
-- ✅ Image structure validation
-- ✅ Simple encode/decode roundtrip
-- ✅ Empty data handling
-- ✅ Run-length encoding efficiency
-- ✅ Diverse data patterns (worst-case RLE)
-- ✅ Image file I/O roundtrip
-- ✅ Error path validation (invalid files, invalid images)
-- ✅ Pattern data with mixed runs and literals
+- ✅ Header validation with various configurations
 
-### Future Test Cases (Planned)
-The following test areas are stubbed for future implementation:
+#### Basic I/O Tests
+- ✅ Simple write/read roundtrip
+- ✅ Solid color image handling
+- ✅ Gradient pattern encoding
 
-1. **Utah RLE Conformance**
-   - Cross-validation with utahrle reference implementation
-   - File format compatibility tests
-   - Decode comparison tests
+#### Corner Case Tests
+- ✅ Minimum size image (1x1)
+- ✅ Wide images (256x1)
+- ✅ Tall images (1x256)
+- ✅ Checkerboard pattern (worst-case for RLE)
 
-2. **Extended Format Support**
-   - Multi-channel images (grayscale, RGB, RGBA)
-   - Large image handling
-   - Edge cases (1x1, very wide, very tall images)
+#### Error Handling Tests
+- ✅ Null image write error handling
+- ✅ Invalid file read error handling
+- ✅ Corrupted header detection
 
-3. **Performance Benchmarks**
-   - Encoding speed tests
-   - Decoding speed tests
-   - Memory usage profiling
-   - Compression ratio analysis
+#### Stress Tests
+- ✅ Large images (512x512)
+- ✅ Random noise patterns
 
-4. **Robustness Testing**
-   - Corrupted file handling
-   - Truncated data recovery
-   - Memory limit testing
-   - Fuzz testing with random data
+#### Utah RLE Compatibility Tests
+- ✅ Read files written by utahrle
+- ✅ Utahrle reads files written by our implementation
+- ✅ Bidirectional roundtrip compatibility
+- ✅ Edge case compatibility (1x1 images)
+- ✅ Large image compatibility
 
-5. **Integration Tests**
-   - End-to-end workflows
-   - Real-world image samples
-   - Interoperability with other tools
+### Key Findings
+
+During testing, we identified and fixed one behavioral difference between the RLE specification and the actual utahrle implementation:
+
+**Null Byte with NO_BACKGROUND Flag**: When the NO_BACKGROUND flag is set, utahrle writes a single null byte after the header. Our implementation was updated to match this behavior for full compatibility.
+
+See [TEST_RESULTS.md](TEST_RESULTS.md) for detailed test results and findings.
 
 ### Running Tests
 
