@@ -26,6 +26,12 @@ int rle_write(icv_image_t *bif, FILE *fp);
 icv_image_t* rle_read(FILE *fp);
 void bu_free(void *ptr, const char *str);
 
+// Helper function to create test file paths that work on all platforms
+// Uses current directory instead of /tmp for cross-platform compatibility
+inline std::string test_file_path(const char* filename) {
+    return std::string(filename);
+}
+
 // Test result tracking
 struct TestStats {
     int total = 0;
@@ -201,7 +207,7 @@ void test_simple_roundtrip() {
     EXPECT_TRUE(img != nullptr);
     
     // Write to file
-    FILE* fp = std::fopen("/tmp/test_simple.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_simple.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     
     int result = rle_write(img, fp);
@@ -209,7 +215,7 @@ void test_simple_roundtrip() {
     EXPECT_EQ(result, 0);  // BRLCAD_OK
     
     // Read back
-    fp = std::fopen("/tmp/test_simple.rle", "rb");
+    fp = std::fopen(test_file_path("test_simple.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     
     icv_image_t* loaded = rle_read(fp);
@@ -241,13 +247,13 @@ void test_solid_color() {
         img->data[i * 3 + 2] = 0.0;  // B
     }
     
-    FILE* fp = std::fopen("/tmp/test_solid.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_solid.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_solid.rle", "rb");
+    fp = std::fopen(test_file_path("test_solid.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -285,13 +291,13 @@ void test_gradient_pattern() {
         }
     }
     
-    FILE* fp = std::fopen("/tmp/test_gradient.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_gradient.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_gradient.rle", "rb");
+    fp = std::fopen(test_file_path("test_gradient.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -317,13 +323,13 @@ void test_minimum_size() {
     icv_image_t* img = create_test_image(1, 1);
     EXPECT_TRUE(img != nullptr);
     
-    FILE* fp = std::fopen("/tmp/test_1x1.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_1x1.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_1x1.rle", "rb");
+    fp = std::fopen(test_file_path("test_1x1.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -344,13 +350,13 @@ void test_wide_image() {
     icv_image_t* img = create_test_image(256, 1);
     EXPECT_TRUE(img != nullptr);
     
-    FILE* fp = std::fopen("/tmp/test_wide.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_wide.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_wide.rle", "rb");
+    fp = std::fopen(test_file_path("test_wide.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -371,13 +377,13 @@ void test_tall_image() {
     icv_image_t* img = create_test_image(1, 256);
     EXPECT_TRUE(img != nullptr);
     
-    FILE* fp = std::fopen("/tmp/test_tall.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_tall.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_tall.rle", "rb");
+    fp = std::fopen(test_file_path("test_tall.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -410,13 +416,13 @@ void test_checkerboard() {
         }
     }
     
-    FILE* fp = std::fopen("/tmp/test_checkerboard.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_checkerboard.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_checkerboard.rle", "rb");
+    fp = std::fopen(test_file_path("test_checkerboard.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -436,7 +442,7 @@ void test_checkerboard() {
 void test_null_image_write() {
     TEST("Null image write error handling");
     
-    FILE* fp = std::fopen("/tmp/test_null.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_null.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     
     int result = rle_write(nullptr, fp);
@@ -450,7 +456,7 @@ void test_null_image_write() {
 void test_invalid_file() {
     TEST("Invalid file read");
     
-    FILE* fp = std::fopen("/tmp/nonexistent_file_12345.rle", "rb");
+    FILE* fp = std::fopen(test_file_path("nonexistent_file_12345.rle").c_str(), "rb");
     if (fp) {
         std::fclose(fp);
         // File exists unexpectedly, skip test
@@ -470,7 +476,7 @@ void test_corrupted_header() {
     TEST("Corrupted header");
     
     // Write a file with invalid magic number
-    FILE* fp = std::fopen("/tmp/test_corrupted.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_corrupted.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     
     // Write bad magic
@@ -479,7 +485,7 @@ void test_corrupted_header() {
     std::fclose(fp);
     
     // Try to read it
-    fp = std::fopen("/tmp/test_corrupted.rle", "rb");
+    fp = std::fopen(test_file_path("test_corrupted.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     
     icv_image_t* loaded = rle_read(fp);
@@ -501,13 +507,13 @@ void test_large_image() {
     icv_image_t* img = create_test_image(w, h);
     EXPECT_TRUE(img != nullptr);
     
-    FILE* fp = std::fopen("/tmp/test_large.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_large.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_large.rle", "rb");
+    fp = std::fopen(test_file_path("test_large.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -536,13 +542,13 @@ void test_random_noise() {
         img->data[i] = double((seed / 65536) % 256) / 255.0;
     }
     
-    FILE* fp = std::fopen("/tmp/test_noise.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_noise.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
     EXPECT_EQ(result, 0);
     
-    fp = std::fopen("/tmp/test_noise.rle", "rb");
+    fp = std::fopen(test_file_path("test_noise.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* loaded = rle_read(fp);
     std::fclose(fp);
@@ -675,11 +681,11 @@ void test_read_utahrle_file() {
     }
     
     // Write with utahrle
-    bool write_ok = write_with_utahrle("/tmp/test_utahrle_write.rle", original, w, h);
+    bool write_ok = write_with_utahrle(test_file_path("test_utahrle_write.rle").c_str(), original, w, h);
     EXPECT_TRUE(write_ok);
     
     // Read with our implementation
-    FILE* fp = std::fopen("/tmp/test_utahrle_write.rle", "rb");
+    FILE* fp = std::fopen(test_file_path("test_utahrle_write.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     
     icv_image_t* img = rle_read(fp);
@@ -704,7 +710,7 @@ void test_utahrle_reads_our_file() {
     EXPECT_TRUE(img != nullptr);
     
     // Write with our implementation
-    FILE* fp = std::fopen("/tmp/test_our_write.rle", "wb");
+    FILE* fp = std::fopen(test_file_path("test_our_write.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
@@ -713,7 +719,7 @@ void test_utahrle_reads_our_file() {
     // Read with utahrle
     std::vector<uint8_t> rgb;
     size_t rw, rh;
-    bool read_ok = read_with_utahrle("/tmp/test_our_write.rle", rgb, rw, rh);
+    bool read_ok = read_with_utahrle(test_file_path("test_our_write.rle").c_str(), rgb, rw, rh);
     EXPECT_TRUE(read_ok);
     EXPECT_EQ(rw, w);
     EXPECT_EQ(rh, h);
@@ -749,18 +755,18 @@ void test_bidirectional_roundtrip() {
     }
     
     // Write with utahrle
-    bool ok = write_with_utahrle("/tmp/test_rt1.rle", original, w, h);
+    bool ok = write_with_utahrle(test_file_path("test_rt1.rle").c_str(), original, w, h);
     EXPECT_TRUE(ok);
     
     // Read with our implementation
-    FILE* fp = std::fopen("/tmp/test_rt1.rle", "rb");
+    FILE* fp = std::fopen(test_file_path("test_rt1.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* img = rle_read(fp);
     std::fclose(fp);
     EXPECT_TRUE(img != nullptr);
     
     // Write with our implementation
-    fp = std::fopen("/tmp/test_rt2.rle", "wb");
+    fp = std::fopen(test_file_path("test_rt2.rle").c_str(), "wb");
     EXPECT_TRUE(fp != nullptr);
     int result = rle_write(img, fp);
     std::fclose(fp);
@@ -769,7 +775,7 @@ void test_bidirectional_roundtrip() {
     // Read with utahrle
     std::vector<uint8_t> final_rgb;
     size_t fw, fh;
-    ok = read_with_utahrle("/tmp/test_rt2.rle", final_rgb, fw, fh);
+    ok = read_with_utahrle(test_file_path("test_rt2.rle").c_str(), final_rgb, fw, fh);
     // Note: utahrle may have issues reading some files we write, but that's OK
     // as long as our implementation can read them. The important thing is that
     // we can read utahrle files.
@@ -789,10 +795,10 @@ void test_utahrle_1x1_compat() {
     TEST("1x1 image compatibility with utahrle");
     
     std::vector<uint8_t> pixel = {255, 128, 64};
-    bool ok = write_with_utahrle("/tmp/test_1x1_utah.rle", pixel, 1, 1);
+    bool ok = write_with_utahrle(test_file_path("test_1x1_utah.rle").c_str(), pixel, 1, 1);
     EXPECT_TRUE(ok);
     
-    FILE* fp = std::fopen("/tmp/test_1x1_utah.rle", "rb");
+    FILE* fp = std::fopen(test_file_path("test_1x1_utah.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* img = rle_read(fp);
     std::fclose(fp);
@@ -824,10 +830,10 @@ void test_utahrle_large_compat() {
         }
     }
     
-    bool ok = write_with_utahrle("/tmp/test_large_utah.rle", data, w, h);
+    bool ok = write_with_utahrle(test_file_path("test_large_utah.rle").c_str(), data, w, h);
     EXPECT_TRUE(ok);
     
-    FILE* fp = std::fopen("/tmp/test_large_utah.rle", "rb");
+    FILE* fp = std::fopen(test_file_path("test_large_utah.rle").c_str(), "rb");
     EXPECT_TRUE(fp != nullptr);
     icv_image_t* img = rle_read(fp);
     std::fclose(fp);
@@ -894,23 +900,23 @@ int main() {
     
     // Clean up test files
     std::cout << "\nCleaning up test files...\n";
-    std::remove("/tmp/test_simple.rle");
-    std::remove("/tmp/test_solid.rle");
-    std::remove("/tmp/test_gradient.rle");
-    std::remove("/tmp/test_1x1.rle");
-    std::remove("/tmp/test_wide.rle");
-    std::remove("/tmp/test_tall.rle");
-    std::remove("/tmp/test_checkerboard.rle");
-    std::remove("/tmp/test_null.rle");
-    std::remove("/tmp/test_corrupted.rle");
-    std::remove("/tmp/test_large.rle");
-    std::remove("/tmp/test_noise.rle");
-    std::remove("/tmp/test_utahrle_write.rle");
-    std::remove("/tmp/test_our_write.rle");
-    std::remove("/tmp/test_rt1.rle");
-    std::remove("/tmp/test_rt2.rle");
-    std::remove("/tmp/test_1x1_utah.rle");
-    std::remove("/tmp/test_large_utah.rle");
+    std::remove(test_file_path("test_simple.rle").c_str());
+    std::remove(test_file_path("test_solid.rle").c_str());
+    std::remove(test_file_path("test_gradient.rle").c_str());
+    std::remove(test_file_path("test_1x1.rle").c_str());
+    std::remove(test_file_path("test_wide.rle").c_str());
+    std::remove(test_file_path("test_tall.rle").c_str());
+    std::remove(test_file_path("test_checkerboard.rle").c_str());
+    std::remove(test_file_path("test_null.rle").c_str());
+    std::remove(test_file_path("test_corrupted.rle").c_str());
+    std::remove(test_file_path("test_large.rle").c_str());
+    std::remove(test_file_path("test_noise.rle").c_str());
+    std::remove(test_file_path("test_utahrle_write.rle").c_str());
+    std::remove(test_file_path("test_our_write.rle").c_str());
+    std::remove(test_file_path("test_rt1.rle").c_str());
+    std::remove(test_file_path("test_rt2.rle").c_str());
+    std::remove(test_file_path("test_1x1_utah.rle").c_str());
+    std::remove(test_file_path("test_large_utah.rle").c_str());
     
     // Return failure if any tests failed
     return (g_stats.failed > 0) ? 1 : 0;
