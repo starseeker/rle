@@ -276,6 +276,9 @@ inline bool write_header(FILE* f, const Header& h) {
     if (!h.no_background()) {
         for (uint8_t v : h.background) if (!write_u8(f, v)) return false;
         if (h.background.size() & 0x01) if (!write_u8(f, 0)) return false;
+    } else {
+        /* Utah RLE writes a single null byte when NO_BACKGROUND flag is set */
+        if (!write_u8(f, 0)) return false;
     }
     if (h.ncmap > 0) {
         for (uint16_t cv : h.colormap)
@@ -313,6 +316,10 @@ inline bool read_header_single(FILE* f, Header& h, Endian e, Error& err) {
             uint8_t pad;
             if (!rd8(pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
         }
+    } else {
+        /* Utah RLE writes a single null byte when NO_BACKGROUND flag is set */
+        uint8_t null_byte;
+        if (!rd8(null_byte)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
     }
     if (h.ncmap > 0) {
         if (h.ncmap > 3 || h.cmaplen > 8) { err = Error::COLORMAP_TOO_LARGE; std::fseek(f, start, SEEK_SET); return false; }
