@@ -899,8 +899,7 @@ void test_teapot_image() {
         // Convert our double data to uint8_t for comparison
         if (our_width == utah_width && our_height == utah_height) {
             size_t sample_points = 10; // Sample 10 points across the image
-            size_t step = (our_width * our_height) / sample_points;
-            if (step == 0) step = 1;
+            size_t step = std::max(size_t(1), (our_width * our_height) / sample_points);
             
             bool pixels_match = true;
             for (size_t i = 0; i < our_width * our_height && i < utah_rgb.size() / 3; i += step) {
@@ -910,7 +909,7 @@ void test_teapot_image() {
                     uint8_t utah_val = utah_rgb[i * 3 + c];
                     
                     // Allow for small rounding differences (within 1)
-                    if (our_val > utah_val + 1 || our_val + 1 < utah_val) {
+                    if (our_val > utah_val + 1 || utah_val > our_val + 1) {
                         pixels_match = false;
                         break;
                     }
