@@ -37,11 +37,17 @@ add_executable(test_positional test_positional.cpp)
 target_link_libraries(test_positional PRIVATE rle_lib utahrle-static)
 target_include_directories(test_positional PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
 
+# Utah RLE comparison test executable
+add_executable(test_utah_comparison test_utah_comparison.cpp)
+target_link_libraries(test_utah_comparison PRIVATE rle_lib utahrle-static)
+target_include_directories(test_utah_comparison PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
 # Enable testing
 enable_testing()
 add_test(NAME test_rle COMMAND test_rle)
 add_test(NAME test_coverage COMMAND test_coverage)
 add_test(NAME test_positional COMMAND test_positional)
+add_test(NAME test_utah_comparison COMMAND test_utah_comparison)
 
 # Debug test
 add_executable(test_diag_debug test_diag_debug.cpp)
