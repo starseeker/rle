@@ -397,6 +397,13 @@ struct Image {
         if (!safe_mul_u64(total, header.channels(), MAX_ALLOC_BYTES, bytes)) { err = Error::ALLOC_TOO_LARGE; return false; }
         try {
             pixels.assign(size_t(header.width()) * size_t(header.height()) * header.channels(), 0);
+            // Initialize alpha channel to 255 (fully opaque) by default
+            if (header.has_alpha()) {
+                size_t npix = size_t(header.width()) * header.height();
+                for (size_t i = 0; i < npix; ++i) {
+                    pixels[i * header.channels() + header.ncolors] = 255;
+                }
+            }
         } catch (...) { err = Error::ALLOC_TOO_LARGE; return false; }
         err = Error::OK; return true;
     }

@@ -848,6 +848,123 @@ void test_utahrle_large_compat() {
     END_TEST();
 }
 
+// =============================================================================
+// Alpha Channel Tests
+// =============================================================================
+
+// Test basic alpha channel write/read roundtrip
+void test_alpha_roundtrip() {
+    TEST("Alpha channel roundtrip");
+    
+    const size_t w = 16, h = 16;
+    icv_image_t* img = create_test_image(w, h);
+    EXPECT_TRUE(img != nullptr);
+    
+    // Convert to RGBA with varying colors so there's no uniform background
+    img->channels = 4;
+    img->alpha_channel = 1;
+    size_t new_size = w * h * 4;
+    double *new_data = (double*)calloc(new_size, sizeof(double));
+    EXPECT_TRUE(new_data != nullptr);
+    
+    // Create a pattern with varying RGB and constant alpha
+    for (size_t i = 0; i < w * h; i++) {
+        new_data[i * 4 + 0] = double((i * 7) % 256) / 255.0;     // R - varying
+        new_data[i * 4 + 1] = double((i * 13) % 256) / 255.0;    // G - varying
+        new_data[i * 4 + 2] = double((i * 19) % 256) / 255.0;    // B - varying
+        new_data[i * 4 + 3] = 0.5;                                // A - constant 50% transparency
+    }
+    bu_free(img->data, "old data");
+    img->data = new_data;
+    
+    // Write with alpha
+    FILE* fp = std::fopen(test_file_path("test_alpha_rt.rle").c_str(), "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    // Read back
+    fp = std::fopen(test_file_path("test_alpha_rt.rle").c_str(), "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* loaded = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(loaded != nullptr);
+    
+    if (loaded) {
+        EXPECT_EQ(loaded->width, w);
+        EXPECT_EQ(loaded->height, h);
+        EXPECT_EQ(loaded->channels, 4u);  // Should preserve alpha
+        EXPECT_EQ(loaded->alpha_channel, 1u);
+        
+        // Verify alpha data is preserved (with some tolerance for rounding)
+        bool alpha_ok = true;
+        size_t first_bad = 0;
+        for (size_t i = 0; i < w * h && alpha_ok; i++) {
+            double orig_alpha = img->data[i * 4 + 3];
+            double read_alpha = loaded->data[i * 4 + 3];
+            if (std::abs(orig_alpha - read_alpha) > 0.01) {
+                alpha_ok = false;
+                first_bad = i;
+            }
+        }
+        if (!alpha_ok) {
+            std::cout << "\n  Alpha mismatch at pixel " << first_bad << ": ";
+            std::cout << "expected " << img->data[first_bad * 4 + 3];
+            std::cout << ", got " << loaded->data[first_bad * 4 + 3] << std::endl;
+        }
+        EXPECT_TRUE(alpha_ok);
+        
+        free_test_image(loaded);
+    }
+    
+    free_test_image(img);
+    std::remove(test_file_path("test_alpha_rt.rle").c_str());
+    
+    END_TEST();
+}
+
+// Test that RGB images still work and don't get alpha
+void test_alpha_preservation() {
+    TEST("RGB without alpha preserved");
+    
+    const size_t w = 16, h = 16;
+    icv_image_t* img = create_test_image(w, h);
+    EXPECT_TRUE(img != nullptr);
+    
+    // Ensure it's RGB only
+    EXPECT_EQ(img->channels, 3u);
+    EXPECT_EQ(img->alpha_channel, 0u);
+    
+    // Write
+    FILE* fp = std::fopen(test_file_path("test_rgb_only.rle").c_str(), "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    // Read back
+    fp = std::fopen(test_file_path("test_rgb_only.rle").c_str(), "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* loaded = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(loaded != nullptr);
+    
+    if (loaded) {
+        EXPECT_EQ(loaded->width, w);
+        EXPECT_EQ(loaded->height, h);
+        EXPECT_EQ(loaded->channels, 3u);  // Should NOT have alpha
+        EXPECT_EQ(loaded->alpha_channel, 0u);
+        
+        free_test_image(loaded);
+    }
+    
+    free_test_image(img);
+    std::remove(test_file_path("test_rgb_only.rle").c_str());
+    
+    END_TEST();
+}
+
 // Test teapot.rle image compatibility
 void test_teapot_image() {
     TEST("Teapot RLE image compatibility with utahrle");
@@ -969,6 +1086,11 @@ int main() {
     std::cout << "\n--- Stress Tests ---\n";
     test_large_image();
     test_random_noise();
+    
+    // Alpha channel tests
+    std::cout << "\n--- Alpha Channel Tests ---\n";
+    test_alpha_roundtrip();
+    test_alpha_preservation();
     
     // Utah RLE comparison tests
     std::cout << "\n--- Utah RLE Compatibility Tests ---\n";
