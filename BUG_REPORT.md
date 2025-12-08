@@ -1,7 +1,11 @@
-# Critical Bug Report: Y-Coordinate Reversal in RLE Implementation
+# Critical Bug Report: Y-Coordinate Issue in RLE Implementation
+
+## ✅ STATUS: FIXED (commit 394ad28)
 
 ## Summary
-Pixel data is read in reverse Y-order. When an image is written and read back, row 0 contains data from row H-1, row 1 from row H-2, etc.
+~~Pixel data is read in reverse Y-order. When an image is written and read back, row 0 contains data from row H-1, row 1 from row H-2, etc.~~
+
+**ACTUAL BUG:** Decoder was not incrementing scan_y between scanlines. Only the last scanline was being decoded correctly, with all previous scanlines remaining at default values (zeros). This created the appearance of Y-reversal in tests.
 
 ## Evidence
 
@@ -34,22 +38,31 @@ All rows read back as G=0 (first row's value repeated)
 
 ## Root Cause Analysis
 
-### RLE Format Specification
-- Scanlines are numbered Y=0 (bottom) to Y=H-1 (top)
-- Y-axis increases upward (standard graphics coordinates)
-- Scanline Y=0 should contain the bottom row of the visible image
+### Initial Hypothesis (INCORRECT)
+Initially suspected Y-coordinate flipping issue based on RLE spec saying Y=0 is bottom. Investigation showed this was wrong.
 
-### Our Memory Layout
-- Arrays index from 0 to H-1
-- Conventionally, index 0 is the top row
-- Index H-1 is the bottom row
+### Actual Root Cause (CORRECT)
+The RLE decoder was missing critical logic to advance between scanlines:
 
-### The Bug
-Neither encoder nor decoder performs Y-coordinate flipping, resulting in:
-1. **Encoder:** Writes memory row 0 as scanline Y=0 (but row 0 is top, scanline 0 should be bottom)
-2. **Decoder:** Reads scanline Y=0 into memory row 0 (but scanline 0 is bottom, should go to row H-1)
+1. **RLE Format:** Scanlines are delimited implicitly by SET_COLOR opcodes
+2. **Convention:** When SET_COLOR(0) appears after other channels, it signals a new scanline
+3. **Bug:** Decoder set scan_x = 0 on SET_COLOR but never incremented scan_y
+4. **Effect:** All scanlines were decoded to y=0, overwriting each other repeatedly
+5. **Result:** Only the last scanline survived, all others remained at default (zero)
 
-**Net Effect:** When we write and read our own files, the image gets vertically flipped.
+### The Fix
+```cpp
+case OPC_SET_COLOR: {
+    int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+    // If we're moving to channel 0 after having processed other channels,
+    // it means we've finished the previous scanline
+    if (new_channel == 0 && current_channel >= 0) {
+        ++scan_y;
+    }
+    current_channel = new_channel;
+    scan_x = xmin;
+}
+```
 
 ## Why Existing Tests Passed
 
@@ -80,56 +93,48 @@ None of the existing roundtrip tests validated pixel values:
 - All image reads  
 - Both `write_rgb()`/`read_rgb()` and `rle_write()`/`rle_read()`
 
-## Proposed Solutions
+## Investigation Process
 
-### Option 1: Flip in Encoder Only
-```cpp
-// In Encoder::write(), line ~458
-uint32_t mem_row = H - 1 - y;  // Write bottom row first
-// Use mem_row for all pixel accesses
-```
-**Pros:** Writes spec-compliant files  
-**Cons:** Breaks reading existing Utah RLE files if they don't follow spec
+### Testing Utah RLE Convention
+Created tests to understand Utah RLE's actual Y-coordinate convention:
+- Utah RLE writes scanlines from ymin to ymax sequentially
+- Utah RLE reads them back in the same order
+- Scanline y=0 corresponds to memory row 0 (top, not bottom)
+- **Conclusion:** Despite RLE spec theory, implementations use y=0 = TOP
 
-### Option 2: Flip in Decoder Only
-```cpp
-// In Decoder::read(), when writing pixels
-uint32_t mem_row = H - 1 - (scan_y - ymin);
-```
-**Pros:** Reads spec-compliant files correctly  
-**Cons:** Breaks reading existing Utah RLE files
+### Discovering the Real Bug
+1. Verified encoder writes scanlines in correct order (y=0, y=1, y=2, y=3)
+2. Verified pixel() accessor returns correct memory addresses
+3. Added debug output to decoder - found scan_y never incremented!
+4. Only last scanline was being decoded, overwriting position 0 repeatedly
 
-### Option 3: Flip in Both (Recommended)
-Apply both encoder and decoder flips. This:
-- Makes our files spec-compliant
-- Reads spec-compliant files correctly
-- **May break compatibility** with existing Utah RLE files if they don't follow spec
+### Solution Implemented
+Added scan_y increment logic in SET_COLOR opcode handler. No Y-flipping needed.
 
-### Option 4: Convention Detection
-Detect whether a file uses top=0 or bottom=0 convention:
-- Check some heuristic (e.g., first scanline opcode patterns)
-- Apply flip conditionally
-**Pros:** Maximum compatibility  
-**Cons:** Complex, error-prone
+## Test Results After Fix
 
-## Recommendation
-1. Test how actual Utah RLE tools write files (do they flip or not?)
-2. If Utah RLE uses top=0 convention despite spec, stick with it (no changes needed)
-3. If Utah RLE follows spec (bottom=0), implement Option 3
-4. Add pixel-level validation to ALL tests
+### All Tests Passing ✅
+- **Main test suite:** 22/22 passing (was 21/22)
+- **Coverage tests:** 18/18 passing
+- **Alpha channel:** Now works perfectly
 
-## Reproduction Steps
-```bash
-cd /home/runner/work/rle/rle
-g++ -std=c++11 -o test_16x16 test_16x16.cpp -I.
-./test_16x16
-# Observe: Row 0 gets row 15's data
-```
+### Pixel-Level Validation ✅
+All test cases now return correct data:
+- `test_16x16.cpp`: All 256 pixels match expected Y-gradient pattern
+- `test_4x4`: All 4 rows have correct unique G values  
+- `test_rgb_minimal.cpp`: 2x2 RGB pixels all match exactly
+- `test_alpha_minimal.cpp`: 2x2 RGBA including alpha values match exactly
+- `teapot.rle`: Utah RLE compatibility maintained
 
-## Files Added for Testing
-- `test_16x16.cpp` - 16x16 with Y-gradient
-- `test_4x4` - Minimal test
+## Files Added for Testing and Debugging
+- `test_16x16.cpp` - 16x16 with Y-gradient pattern
+- `test_4x4` - Minimal 4x4 test case
 - `test_rgb_minimal.cpp` - 2x2 RGB test
-- `test_alpha_minimal.cpp` - 2x2 RGBA test
+- `test_alpha_minimal.cpp` - 2x2 RGBA test  
+- `find_bug.cpp` - Instrumented test that isolated the decoder bug
+- `test_decoder_debug.cpp` - Manual decoder trace with debug output
+- `test_encoder_debug.cpp` - Verified encoder writes correctly
+- `test_compare_implementations.cpp` - Compared our impl vs Utah RLE
+- `test_utah_convention.cpp` - Determined Utah RLE's Y-coordinate convention
 
-All demonstrate the Y-reversal bug.
+These tests exposed the bug and verified the fix.
