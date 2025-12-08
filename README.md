@@ -98,9 +98,15 @@ codec.decode(encoded, decoded);
 
 ## Testing Framework
 
-The test harness (`test_rle.cpp`) provides comprehensive validation of the rle.hpp implementation and its compatibility with the Utah RLE reference library (utahrle).
+The project includes two comprehensive test suites:
+- **test_rle.cpp**: Primary test suite for functional validation and Utah RLE compatibility
+- **test_coverage.cpp**: Extended test suite focused on code coverage and edge cases
 
-### Test Coverage (19 Tests - All Passing)
+### Test Coverage (37 Tests Total - All Passing)
+
+**Code Coverage**: 89.1% line coverage, 97.7% function coverage
+
+#### Primary Test Suite (test_rle.cpp - 19 Tests)
 
 #### Basic API Tests
 - ✅ Error code string validation
@@ -141,6 +147,16 @@ During testing, we identified and fixed one behavioral difference between the RL
 
 See [TEST_RESULTS.md](TEST_RESULTS.md) for detailed test results and findings.
 
+#### Extended Coverage Test Suite (test_coverage.cpp - 18 Tests)
+- ✅ Comprehensive error string coverage
+- ✅ Invalid header validation (dimensions, pixelbits, ncolors, background)
+- ✅ Write error paths (invalid channels, oversized dimensions)
+- ✅ Read error paths (null pointer, truncated header)
+- ✅ Format features (comments, alpha channel, grayscale, various color counts)
+- ✅ Background mode coverage (different detection modes)
+- ✅ Flag combinations (CLEAR_FIRST, NO_BACKGROUND, ALPHA)
+- ✅ Colormap validation and edge cases
+
 ### Running Tests
 
 ```bash
@@ -149,23 +165,68 @@ cmake --build build
 cd build
 ctest --output-on-failure --verbose
 
-# Or run the test executable directly
+# Or run test executables directly
 ./test_rle
+./test_coverage
 ```
+
+### Code Coverage Analysis
+
+To generate a code coverage report:
+
+```bash
+# Configure with coverage flags
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_C_FLAGS="--coverage"
+
+# Build and run tests
+cmake --build build
+cd build
+./test_rle
+./test_coverage
+
+# Generate coverage report (requires lcov)
+lcov --capture --directory . --output-file coverage.info \
+     --exclude '/usr/*' --exclude '*/utahrle/*' --exclude '*/test_*.cpp'
+genhtml coverage.info --output-directory coverage_html
+
+# View the report
+open coverage_html/index.html  # macOS
+xdg-open coverage_html/index.html  # Linux
+```
+
+Current coverage metrics:
+- **Lines**: 89.1% (498 of 559 lines)
+- **Functions**: 97.7% (42 of 43 functions)
+
+Uncovered code primarily consists of:
+- Rare error paths (memory allocation failures, internal errors)
+- Alternative background detection modes (BG_OVERLAY, BG_CLEAR)
+- Edge cases in format conversion
 
 ## CI/CD
 
-The project uses GitHub Actions for continuous integration across three platforms:
+The project uses GitHub Actions for continuous integration with two workflows:
+
+### Build and Test Workflow
+Runs on three platforms:
 - **Linux** (Ubuntu latest)
 - **macOS** (latest)
 - **Windows** (latest, Visual Studio 2022)
 
-The CI workflow:
+Steps:
 1. Checks out code with submodules
 2. Configures CMake with platform-specific generators
 3. Builds the project in Release mode
 4. Runs the test suite via CTest
 5. Validates clean execution on all platforms
+
+### Code Coverage Workflow
+Runs on Ubuntu with:
+1. Installation of lcov coverage tools
+2. Debug build with coverage instrumentation
+3. Execution of all test suites
+4. Generation of detailed coverage reports
+5. Upload of HTML coverage report as artifact
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for details.
 

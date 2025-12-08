@@ -27,6 +27,12 @@ add_executable(test_rle test_rle.cpp)
 target_link_libraries(test_rle PRIVATE rle_lib utahrle-static)
 target_include_directories(test_rle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
 
+# Coverage test executable
+add_executable(test_coverage test_coverage.cpp)
+target_link_libraries(test_coverage PRIVATE rle_lib utahrle-static)
+target_include_directories(test_coverage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
 # Enable testing
 enable_testing()
 add_test(NAME test_rle COMMAND test_rle)
+add_test(NAME test_coverage COMMAND test_coverage)
