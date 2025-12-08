@@ -59,7 +59,7 @@ bu_log(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stdout, fmt, ap);
+    vfprintf(stdout, fmt, ap);
     va_end(ap);
 
     return 0;

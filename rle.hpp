@@ -275,7 +275,9 @@ inline bool write_header(FILE* f, const Header& h) {
 
     if (!h.no_background()) {
         for (uint8_t v : h.background) if (!write_u8(f, v)) return false;
-        if (h.background.size() & 0x01) if (!write_u8(f, 0)) return false;
+        /* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
+         * after the background block, even when ncolors is odd. The RLE spec
+         * describes padding for comments and pixel data, but not for background. */
     } else {
         /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
          * a single null byte when NO_BACKGROUND flag is set, even though the
@@ -316,10 +318,9 @@ inline bool read_header_single(FILE* f, Header& h, Endian e, Error& err) {
         h.background.resize(h.ncolors);
         for (uint8_t &v : h.background)
             if (!rd8(v)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-        if (h.background.size() & 0x01) {
-            uint8_t pad;
-            if (!rd8(pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-        }
+        /* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
+         * after the background block, even when ncolors is odd. The RLE spec
+         * describes padding for comments and pixel data, but not for background. */
     } else {
         /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
          * a single null byte when NO_BACKGROUND flag is set, even though the
