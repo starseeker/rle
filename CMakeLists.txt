@@ -32,7 +32,18 @@ add_executable(test_coverage test_coverage.cpp)
 target_link_libraries(test_coverage PRIVATE rle_lib utahrle-static)
 target_include_directories(test_coverage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
 
+# Positional validation test executable
+add_executable(test_positional test_positional.cpp)
+target_link_libraries(test_positional PRIVATE rle_lib utahrle-static)
+target_include_directories(test_positional PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
 # Enable testing
 enable_testing()
 add_test(NAME test_rle COMMAND test_rle)
 add_test(NAME test_coverage COMMAND test_coverage)
+add_test(NAME test_positional COMMAND test_positional)
+
+# Debug test
+add_executable(test_diag_debug test_diag_debug.cpp)
+target_link_libraries(test_diag_debug PRIVATE rle_lib utahrle-static)
+target_include_directories(test_diag_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
