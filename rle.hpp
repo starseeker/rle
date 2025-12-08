@@ -587,7 +587,13 @@ public:
                 case OPC_SET_COLOR: {
                     if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
                     uint16_t ch = op1;
-                    current_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+                    int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+                    // If we're moving to channel 0 after having processed other channels,
+                    // it means we've finished the previous scanline
+                    if (new_channel == 0 && current_channel >= 0) {
+                        ++scan_y;
+                    }
+                    current_channel = new_channel;
                     scan_x = xmin;
                 } break;
                 case OPC_SKIP_PIXELS: {
