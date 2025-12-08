@@ -199,6 +199,7 @@ All test files are generated programmatically or read from the utahrle reference
 
 Code coverage is now integrated into the CI pipeline:
 - Coverage reports generated automatically on every commit
-- HTML reports available as CI artifacts
-- Coverage metrics tracked over time
-- Prevents regression in test coverage
+- HTML reports available as CI artifacts for review
+- Current coverage metrics displayed in CI logs
+
+**Future Enhancement**: Consider adding coverage threshold checks to prevent regression in test coverage.

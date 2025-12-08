@@ -21,7 +21,8 @@ extern "C" {
 #include "rle_put.h"
 }
 
-// Declare external functions from rle.cpp
+// Forward declarations for rle.cpp API functions
+// Note: These should ideally be in a proper header but are duplicated here for testing
 int rle_write(icv_image_t *bif, FILE *fp);
 icv_image_t* rle_read(FILE *fp);
 void bu_free(void *ptr, const char *str);
@@ -175,7 +176,7 @@ void test_invalid_header_dimensions() {
     EXPECT_EQ(err, rle::Error::DIM_TOO_LARGE);
     
     // Test too large dimensions
-    h.xlen = 40000;  // Exceeds MAX_DIM
+    h.xlen = rle::MAX_DIM + 1;  // Exceeds MAX_DIM
     h.ylen = 100;
     valid = h.validate(err);
     EXPECT_FALSE(valid);
@@ -249,8 +250,8 @@ void test_too_large_pixels() {
     TEST("Too large pixel count");
     
     rle::Header h;
-    h.xlen = 32769;  // Exceeds MAX_DIM (32768)
-    h.ylen = 32769;
+    h.xlen = rle::MAX_DIM + 1;  // Exceeds MAX_DIM
+    h.ylen = rle::MAX_DIM + 1;
     h.ncolors = 3;
     h.pixelbits = 8;
     h.flags = rle::FLAG_NO_BACKGROUND;
@@ -296,8 +297,8 @@ void test_write_oversized_dimensions() {
     
     if (img) {
         // Manually set dimensions to exceed maximum
-        img->width = 40000;
-        img->height = 40000;
+        img->width = rle::MAX_DIM + 1;
+        img->height = rle::MAX_DIM + 1;
         
         FILE* fp = std::fopen(test_file_path("test_oversized.rle").c_str(), "wb");
         EXPECT_TRUE(fp != nullptr);
@@ -336,7 +337,11 @@ void test_read_truncated_header() {
     EXPECT_TRUE(fp != nullptr);
     
     // Write magic number but nothing else
-    uint8_t data[] = {0x52, 0xCC};  // RLE_MAGIC in little endian
+    // RLE_MAGIC = 0xCC52, stored in little endian format
+    uint8_t data[] = {
+        uint8_t(rle::RLE_MAGIC & 0xFF),         // 0x52
+        uint8_t((rle::RLE_MAGIC >> 8) & 0xFF)   // 0xCC
+    };
     std::fwrite(data, 1, sizeof(data), fp);
     std::fclose(fp);
     
