@@ -592,6 +592,8 @@ public:
                     uint16_t lines;
                     if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
                     else lines = op1;
+                    // If we were in the middle of a scanline, complete it first
+                    if (current_channel >= 0) ++scan_y;
                     scan_y += lines; scan_x = xmin; current_channel = -1;
                     continue;
                 }
