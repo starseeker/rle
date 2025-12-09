@@ -53,3 +53,23 @@ add_test(NAME test_utah_comparison COMMAND test_utah_comparison)
 add_executable(test_diag_debug test_diag_debug.cpp)
 target_link_libraries(test_diag_debug PRIVATE rle_lib utahrle-static)
 target_include_directories(test_diag_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
+# Utah debug test
+add_executable(test_utah_debug test_utah_debug.cpp)
+target_link_libraries(test_utah_debug PRIVATE rle_lib utahrle-static)
+target_include_directories(test_utah_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
+# Utah decode test
+add_executable(test_decode_utah test_decode_utah.cpp)
+target_link_libraries(test_decode_utah PRIVATE rle_lib utahrle-static)
+target_include_directories(test_decode_utah PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
+# Utah background test
+add_executable(test_utah_bg test_utah_bg.cpp)
+target_link_libraries(test_utah_bg PRIVATE rle_lib utahrle-static)
+target_include_directories(test_utah_bg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+
+# Utah gradient debug test
+add_executable(test_utah_gradient_debug test_utah_gradient_debug.cpp)
+target_link_libraries(test_utah_gradient_debug PRIVATE rle_lib utahrle-static)
+target_include_directories(test_utah_gradient_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)

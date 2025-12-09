@@ -16,6 +16,7 @@
 extern "C" {
 #include "rle.h"
 #include "rle_put.h"
+#include "rle_code.h"
 }
 
 // Test statistics
@@ -411,8 +412,9 @@ bool test_clearfirst_flag() {
     out_hdr.ymax = H - 1;
     out_hdr.ncolors = 3;
     out_hdr.alpha = 0;
-    out_hdr.background = 2;  // Set CLEAR_FIRST
-    RLE_SET_BIT(out_hdr, 0);  // H_CLEARFIRST bit 0
+    out_hdr.background = 0;  // No background color
+    // Set CLEAR_FIRST bit in flags (bit 0 of byte 10)
+    RLE_SET_BIT(out_hdr, H_CLEARFIRST);  // H_CLEARFIRST = 0x1
     
     FILE* fp = fopen("test_clear.rle", "wb");
     if (!fp) TEST_FAIL("Failed to open file for writing");
