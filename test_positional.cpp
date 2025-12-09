@@ -3,8 +3,8 @@
  * @brief Comprehensive positional and feature validation tests for RLE implementation
  *
  * Tests randomized RGB patterns to ensure positional logic is correct across
- * various image sizes and feature combinations. Cross-validates with utahrle
- * to ensure output compatibility.
+ * various image sizes and feature combinations. Self-contained validation with
+ * pixel-level accuracy verification.
  */
 
 #include "rle.hpp"

@@ -33,7 +33,11 @@ struct TestStats {
         std::cout << "\n========================================\n";
         std::cout << "Test Summary:\n";
         std::cout << "  Total:   " << total << "\n";
-        std::cout << "  Passed:  " << passed << " (" << (100 * passed / total) << "%)\n";
+        if (total > 0) {
+            std::cout << "  Passed:  " << passed << " (" << (100 * passed / total) << "%)\n";
+        } else {
+            std::cout << "  Passed:  " << passed << "\n";
+        }
         std::cout << "  Failed:  " << failed << "\n";
         std::cout << "========================================\n";
     }
