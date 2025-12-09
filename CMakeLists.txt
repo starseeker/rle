@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(rle VERSION 1.0.0 LANGUAGES C CXX)
+project(rle VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 11)
@@ -13,63 +13,39 @@ else()
     add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
-# Build utahrle submodule
-set(BUILD_SHARED_LIBS OFF)
-set(BUILD_STATIC_LIBS ON)
-add_subdirectory(utahrle EXCLUDE_FROM_ALL)
-
 # RLE library
 add_library(rle_lib rle.cpp rle.hpp)
 target_include_directories(rle_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Test executable
+# Main test executable
 add_executable(test_rle test_rle.cpp)
-target_link_libraries(test_rle PRIVATE rle_lib utahrle-static)
-target_include_directories(test_rle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+target_link_libraries(test_rle PRIVATE rle_lib)
 
 # Coverage test executable
 add_executable(test_coverage test_coverage.cpp)
-target_link_libraries(test_coverage PRIVATE rle_lib utahrle-static)
-target_include_directories(test_coverage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+target_link_libraries(test_coverage PRIVATE rle_lib)
 
 # Positional validation test executable
 add_executable(test_positional test_positional.cpp)
-target_link_libraries(test_positional PRIVATE rle_lib utahrle-static)
-target_include_directories(test_positional PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
-
-# Utah RLE comparison test executable
-add_executable(test_utah_comparison test_utah_comparison.cpp)
-target_link_libraries(test_utah_comparison PRIVATE rle_lib utahrle-static)
-target_include_directories(test_utah_comparison PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+target_link_libraries(test_positional PRIVATE rle_lib)
 
 # Enable testing
 enable_testing()
-add_test(NAME test_rle COMMAND test_rle)
-add_test(NAME test_coverage COMMAND test_coverage)
-add_test(NAME test_positional COMMAND test_positional)
-add_test(NAME test_utah_comparison COMMAND test_utah_comparison)
+add_test(NAME rle_basic COMMAND test_rle)
+add_test(NAME rle_coverage COMMAND test_coverage)
+add_test(NAME rle_positional COMMAND test_positional)
 
-# Debug test
-add_executable(test_diag_debug test_diag_debug.cpp)
-target_link_libraries(test_diag_debug PRIVATE rle_lib utahrle-static)
-target_include_directories(test_diag_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
-
-# Utah debug test
-add_executable(test_utah_debug test_utah_debug.cpp)
-target_link_libraries(test_utah_debug PRIVATE rle_lib utahrle-static)
-target_include_directories(test_utah_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
-
-# Utah decode test
-add_executable(test_decode_utah test_decode_utah.cpp)
-target_link_libraries(test_decode_utah PRIVATE rle_lib utahrle-static)
-target_include_directories(test_decode_utah PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
-
-# Utah background test
-add_executable(test_utah_bg test_utah_bg.cpp)
-target_link_libraries(test_utah_bg PRIVATE rle_lib utahrle-static)
-target_include_directories(test_utah_bg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
-
-# Utah gradient debug test
-add_executable(test_utah_gradient_debug test_utah_gradient_debug.cpp)
-target_link_libraries(test_utah_gradient_debug PRIVATE rle_lib utahrle-static)
-target_include_directories(test_utah_gradient_debug PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/utahrle/include)
+# Optional: Add code coverage support (requires GCC or Clang)
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+if(ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(rle_lib PUBLIC --coverage)
+        target_link_options(rle_lib PUBLIC --coverage)
+        target_compile_options(test_rle PRIVATE --coverage)
+        target_link_options(test_rle PRIVATE --coverage)
+        target_compile_options(test_coverage PRIVATE --coverage)
+        target_link_options(test_coverage PRIVATE --coverage)
+        target_compile_options(test_positional PRIVATE --coverage)
+        target_link_options(test_positional PRIVATE --coverage)
+    endif()
+endif()

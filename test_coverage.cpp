@@ -15,11 +15,7 @@
 #include <vector>
 #include <algorithm>
 
-// Include utahrle headers for compatibility validation
-extern "C" {
-#include "rle.h"
-#include "rle_put.h"
-}
+// No external dependencies - self-contained tests
 
 // Forward declarations for rle.cpp API functions
 // Note: These should ideally be in a proper header but are duplicated here for testing

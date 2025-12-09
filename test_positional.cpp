@@ -15,10 +15,7 @@
 #include <ctime>
 #include <cmath>
 
-extern "C" {
-#include "rle.h"
-#include "rle_put.h"
-}
+// No external dependencies - self-contained tests
 
 // Declare external functions from rle.cpp
 int rle_write(icv_image_t *bif, FILE *fp);
