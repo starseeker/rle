@@ -29,6 +29,13 @@ target_link_libraries(test_coverage PRIVATE rle_lib)
 add_executable(test_positional test_positional.cpp)
 target_link_libraries(test_positional PRIVATE rle_lib)
 
+# Optional: Fuzz test executable (disabled by default, run manually)
+option(ENABLE_FUZZ_TESTS "Build fuzz test executable" OFF)
+if(ENABLE_FUZZ_TESTS)
+    add_executable(test_fuzz test_fuzz.cpp)
+    target_link_libraries(test_fuzz PRIVATE rle_lib)
+endif()
+
 # Enable testing
 enable_testing()
 add_test(NAME rle_basic COMMAND test_rle)
