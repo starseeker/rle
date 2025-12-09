@@ -31,3 +31,16 @@ Thumbs.db
 /tmp/
 *.rle
 test_image_roundtrip.rle
+!teapot.rle
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+*.info
+coverage_html/
+coverage_base.info
+coverage_test.info
+coverage_total.info
+coverage_new.info
+coverage_final.info

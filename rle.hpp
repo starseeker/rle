@@ -397,6 +397,24 @@ struct Image {
         if (!safe_mul_u64(total, header.channels(), MAX_ALLOC_BYTES, bytes)) { err = Error::ALLOC_TOO_LARGE; return false; }
         try {
             pixels.assign(size_t(header.width()) * size_t(header.height()) * header.channels(), 0);
+            
+            // Initialize pixels with background color if specified
+            if (!header.no_background() && !header.background.empty()) {
+                size_t npix = size_t(header.width()) * header.height();
+                for (size_t i = 0; i < npix; ++i) {
+                    for (size_t c = 0; c < header.ncolors && c < header.background.size(); ++c) {
+                        pixels[i * header.channels() + c] = header.background[c];
+                    }
+                }
+            }
+            
+            // Initialize alpha channel to 255 (fully opaque) by default
+            if (header.has_alpha()) {
+                size_t npix = size_t(header.width()) * header.height();
+                for (size_t i = 0; i < npix; ++i) {
+                    pixels[i * header.channels() + header.ncolors] = 255;
+                }
+            }
         } catch (...) { err = Error::ALLOC_TOO_LARGE; return false; }
         err = Error::OK; return true;
     }
@@ -574,13 +592,21 @@ public:
                     uint16_t lines;
                     if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
                     else lines = op1;
+                    // If we were in the middle of a scanline, complete it first
+                    if (current_channel >= 0) ++scan_y;
                     scan_y += lines; scan_x = xmin; current_channel = -1;
                     continue;
                 }
                 case OPC_SET_COLOR: {
                     if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
                     uint16_t ch = op1;
-                    current_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+                    int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+                    // If we're moving to channel 0 after having processed other channels,
+                    // it means we've finished the previous scanline
+                    if (new_channel == 0 && current_channel >= 0) {
+                        ++scan_y;
+                    }
+                    current_channel = new_channel;
                     scan_x = xmin;
                 } break;
                 case OPC_SKIP_PIXELS: {

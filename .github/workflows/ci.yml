@@ -1,4 +1,4 @@
-name: Cross-Platform CI
+name: CI
 
 on:
   push:
@@ -29,8 +29,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
     
     - name: Set up CMake
       uses: lukka/get-cmake@latest
@@ -56,3 +54,48 @@ jobs:
         else
           ./build/test_rle
         fi
+
+  coverage:
+    name: Code Coverage Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install coverage tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+    
+    - name: Configure CMake with coverage
+      run: |
+        cmake -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+    
+    - name: Build
+      run: |
+        cmake --build build
+    
+    - name: Run all tests
+      run: |
+        cd build
+        ./test_rle
+        ./test_coverage
+        ./test_positional
+    
+    - name: Generate coverage report
+      run: |
+        cd build
+        lcov --capture --directory . --output-file coverage.info --exclude '/usr/*' --exclude '*/test_*.cpp'
+        lcov --summary coverage.info
+    
+    - name: Generate HTML coverage report
+      run: |
+        cd build
+        genhtml coverage.info --output-directory coverage_html
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: build/coverage_html

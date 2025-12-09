@@ -94,49 +94,78 @@ inline uint8_t dbl_to_u8(double v) {
 }
 inline double u8_to_dbl(uint8_t v) { return double(v) / 255.0; }
 
-bool icv_to_u8_interleaved(const icv_image_t *img, std::vector<uint8_t> &buf) {
+bool icv_to_u8_interleaved(const icv_image_t *img, std::vector<uint8_t> &buf, bool &has_alpha) {
     if (!img || !img->data || img->channels < 3) return false;
     uint64_t npix;
     if (!safe_mul_u64(img->width, img->height, rle::MAX_PIXELS, npix)) return false;
     if (!npix) return false;
 
-    uint64_t total_bytes;
-    if (!safe_mul_u64(npix, 3, rle::MAX_ALLOC_BYTES, total_bytes)) return false;
+    // Determine if we have alpha channel
+    has_alpha = (img->channels >= 4 && img->alpha_channel != 0);
+    size_t channels_out = has_alpha ? 4 : 3;
 
-    try { buf.resize(static_cast<size_t>(npix) * 3); }
+    uint64_t total_bytes;
+    if (!safe_mul_u64(npix, channels_out, rle::MAX_ALLOC_BYTES, total_bytes)) return false;
+
+    try { buf.resize(static_cast<size_t>(npix) * channels_out); }
     catch (...) { return false; }
 
     const double *src = img->data;
-    for (uint64_t i = 0; i < npix; ++i) {
-        buf[3*i + 0] = dbl_to_u8(src[3*i + 0]);
-        buf[3*i + 1] = dbl_to_u8(src[3*i + 1]);
-        buf[3*i + 2] = dbl_to_u8(src[3*i + 2]);
+    if (has_alpha) {
+        // Convert RGBA
+        for (uint64_t i = 0; i < npix; ++i) {
+            buf[4*i + 0] = dbl_to_u8(src[4*i + 0]);  // R
+            buf[4*i + 1] = dbl_to_u8(src[4*i + 1]);  // G
+            buf[4*i + 2] = dbl_to_u8(src[4*i + 2]);  // B
+            buf[4*i + 3] = dbl_to_u8(src[4*i + 3]);  // A
+        }
+    } else {
+        // Convert RGB
+        for (uint64_t i = 0; i < npix; ++i) {
+            buf[3*i + 0] = dbl_to_u8(src[3*i + 0]);  // R
+            buf[3*i + 1] = dbl_to_u8(src[3*i + 1]);  // G
+            buf[3*i + 2] = dbl_to_u8(src[3*i + 2]);  // B
+        }
     }
     return true;
 }
 
-bool u8_interleaved_to_icv(const std::vector<uint8_t> &buf, size_t w, size_t h, icv_image_t *out) {
+bool u8_interleaved_to_icv(const std::vector<uint8_t> &buf, size_t w, size_t h, bool has_alpha, icv_image_t *out) {
     if (!out || !w || !h) return false;
     uint64_t npix;
     if (!safe_mul_u64(w, h, rle::MAX_PIXELS, npix)) return false;
-    if (buf.size() < npix * 3) return false;
+    
+    size_t channels = has_alpha ? 4 : 3;
+    if (buf.size() < npix * channels) return false;
 
     uint64_t elems;
-    if (!safe_mul_u64(npix, 3, rle::MAX_ALLOC_BYTES / sizeof(double), elems)) return false;
+    if (!safe_mul_u64(npix, channels, rle::MAX_ALLOC_BYTES / sizeof(double), elems)) return false;
 
     double *data = static_cast<double *>(
-        bu_calloc(static_cast<size_t>(npix) * 3, sizeof(double), "rle_icv_data"));
+        bu_calloc(static_cast<size_t>(npix) * channels, sizeof(double), "rle_icv_data"));
     if (!data) return false;
 
-    for (uint64_t i = 0; i < npix; ++i) {
-        data[3*i + 0] = u8_to_dbl(buf[3*i + 0]);
-        data[3*i + 1] = u8_to_dbl(buf[3*i + 1]);
-        data[3*i + 2] = u8_to_dbl(buf[3*i + 2]);
+    if (has_alpha) {
+        // Convert RGBA
+        for (uint64_t i = 0; i < npix; ++i) {
+            data[4*i + 0] = u8_to_dbl(buf[4*i + 0]);  // R
+            data[4*i + 1] = u8_to_dbl(buf[4*i + 1]);  // G
+            data[4*i + 2] = u8_to_dbl(buf[4*i + 2]);  // B
+            data[4*i + 3] = u8_to_dbl(buf[4*i + 3]);  // A
+        }
+    } else {
+        // Convert RGB
+        for (uint64_t i = 0; i < npix; ++i) {
+            data[3*i + 0] = u8_to_dbl(buf[3*i + 0]);  // R
+            data[3*i + 1] = u8_to_dbl(buf[3*i + 1]);  // G
+            data[3*i + 2] = u8_to_dbl(buf[3*i + 2]);  // B
+        }
     }
 
     out->width = w;
     out->height = h;
-    out->channels = 3;
+    out->channels = channels;
+    out->alpha_channel = has_alpha ? 1 : 0;
     out->color_space = ICV_COLOR_SPACE_RGB;
     out->data = data;
     out->magic = ICV_IMAGE_MAGIC;
@@ -247,23 +276,37 @@ rle_write(icv_image_t *bif, FILE *fp)
         return BRLCAD_ERROR;
     }
 
-    std::vector<uint8_t> rgb;
-    if (!icv_to_u8_interleaved(bif, rgb)) {
+    bool has_alpha = false;
+    std::vector<uint8_t> data;
+    if (!icv_to_u8_interleaved(bif, data, has_alpha)) {
         bu_log("rle_write: conversion to 8-bit buffer failed\n");
         return BRLCAD_ERROR;
     }
 
-    BackgroundDecision bgd = detect_background(rgb, bif->width, bif->height);
+    // Background detection only looks at RGB (first 3 channels)
+    // Extract RGB for background detection if we have alpha
+    std::vector<uint8_t> rgb_only;
+    if (has_alpha) {
+        size_t npix = bif->width * bif->height;
+        rgb_only.resize(npix * 3);
+        for (size_t i = 0; i < npix; ++i) {
+            rgb_only[3*i + 0] = data[4*i + 0];  // R
+            rgb_only[3*i + 1] = data[4*i + 1];  // G
+            rgb_only[3*i + 2] = data[4*i + 2];  // B
+        }
+    }
+    
+    BackgroundDecision bgd = detect_background(has_alpha ? rgb_only : data, bif->width, bif->height);
     std::vector<std::string> comments = build_comments();
 
     rle::Error err;
     bool ok = rle::write_rgb(fp,
-                                     rgb.data(),
+                                     data.data(),
                                      static_cast<uint32_t>(bif->width),
                                      static_cast<uint32_t>(bif->height),
                                      comments,
                                      bgd.color,
-                                     false,
+                                     has_alpha,
                                      bgd.mode,
                                      err);
     if (!ok || err != rle::Error::OK) {
@@ -307,7 +350,7 @@ rle_read(FILE *fp)
     ICV_IMAGE_INIT(img);
 
     if (!u8_interleaved_to_icv(rgb, static_cast<size_t>(width),
-                               static_cast<size_t>(height), img)) {
+                               static_cast<size_t>(height), has_alpha, img)) {
         bu_log("rle_read: buffer to icv image conversion failed\n");
         bu_free(img, "icv_image");
         return NULL;
