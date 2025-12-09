@@ -60,7 +60,7 @@ static rle::Image create_image(uint32_t w, uint32_t h, uint8_t ncolors = 3) {
 // Helper: Write and read back image
 static bool roundtrip(const rle::Image& img, rle::Image& out, 
                       rle::Encoder::BackgroundMode bg_mode = rle::Encoder::BG_SAVE_ALL) {
-    const char* filename = "/tmp/test_unusual_paths.rle";
+    const char* filename = "test_unusual_paths.rle";
     
     // Write
     FILE* f = fopen(filename, "wb");
