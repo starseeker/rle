@@ -23,6 +23,10 @@ void test_solid_color_our_write() {
     
     // Write with our implementation
     FILE* fp = fopen("test_solid.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return;
+    }
     rle::Error err;
     rle::write_rgb(fp, data.data(), W, H, {}, {}, false, rle::Encoder::BG_SAVE_ALL, err);
     fflush(fp);  // IMPORTANT: Flush before close
@@ -86,6 +90,10 @@ void test_solid_color_utah_write() {
     out_hdr.background = 0;
     
     FILE* fp = fopen("test_solid_utah.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return;
+    }
     out_hdr.rle_file = fp;
     rle_put_setup(&out_hdr);
     
@@ -149,6 +157,10 @@ void test_file_format() {
     
     // Write with our implementation
     FILE* fp = fopen("test_our_format.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return;
+    }
     rle::Error err;
     rle::write_rgb(fp, data.data(), W, H, {}, {}, false, rle::Encoder::BG_SAVE_ALL, err);
     fflush(fp);
@@ -166,6 +178,10 @@ void test_file_format() {
     out_hdr.background = 0;
     
     fp = fopen("test_utah_format.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return;
+    }
     out_hdr.rle_file = fp;
     rle_put_setup(&out_hdr);
     

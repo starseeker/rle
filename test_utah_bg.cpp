@@ -36,6 +36,10 @@ int main() {
     out_hdr.bg_color[2] = 128;
     
     FILE* fp = fopen("utah_with_bg.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return 1;
+    }
     out_hdr.rle_file = fp;
     rle_put_setup(&out_hdr);
     

@@ -31,6 +31,10 @@ int main() {
     out_hdr.background = 0;
     
     FILE* fp = fopen("utah_simple.rle", "wb");
+    if (!fp) {
+        std::cout << "  FAILED: Cannot create test file\n";
+        return 1;
+    }
     out_hdr.rle_file = fp;
     rle_put_setup(&out_hdr);
     
