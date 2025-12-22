@@ -2,8 +2,10 @@
 
 ## Summary
 
-**Overall Coverage:** 87.70% line coverage, 91.67% branch coverage (192 branches)
-**Source File:** rle.cpp (187 executable lines)
+**Overall Coverage:** 91.53% line coverage, 93.33% branch coverage (180 branches)
+**Source File:** rle.cpp (177 executable lines)
+
+**Improvement:** Coverage increased from 87.70% to 91.53% after removing dead code from `detect_background()`
 
 ## Covered Code Paths
 
@@ -26,7 +28,7 @@ The consolidated test suite (`test_rle.cpp`) successfully exercises:
 
 ## Uncovered Code Paths
 
-### Category 1: Rare Error Conditions (21 uncovered lines)
+### Category 1: Rare Error Conditions (11 uncovered lines)
 
 These are error paths that would only execute under exceptional circumstances:
 
@@ -42,50 +44,47 @@ if (ptr == (char *)(-1L)) {
 **Why uncovered:** Tests never pass null strings or marked pointers (-1) to bu_free()
 **Risk level:** LOW - defensive programming for invalid input
 
-#### 2. Background Detection Post-Loop Checks (Lines 230-233, 235-238) **[DEAD CODE]**
+#### 2. Background Detection Early Exit (Line 218) **[PARTIAL]**
 ```cpp
-// Lines 229-238: Post-loop checks
-if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= overlay_needed) {
-    bd.mode = rle::Encoder::BG_OVERLAY;
-    bd.color = {...};  // Lines 230-233
-} else if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= clear_needed) {
+if (maxCount >= clear_needed) {
     bd.mode = rle::Encoder::BG_CLEAR;
-    bd.color = {...};  // Lines 235-238
+    bd.color = { uint8_t((maxKey >> 16) & 0xFF),  // Line 218
+                 uint8_t((maxKey >> 8)  & 0xFF),
+                 uint8_t(maxKey & 0xFF) };
+    return bd;
 }
 ```
-**Why uncovered:** These lines contain **dead code** that can never execute due to a logic flaw
-**Risk level:** NONE - Code is unreachable
-**Analysis:** If `maxCount >= overlay_needed` after the loop, it means when `maxCount` was last updated during the loop (line 213), the condition at line 221 would have set `bd.mode = BG_OVERLAY`. Therefore, `bd.mode` cannot be `BG_SAVE_ALL` when line 229 executes. Same logic applies to lines 234-238.
-**Recommendation:** Remove lines 229-238 (see BACKGROUND_DETECTION_LOGIC_ISSUE.md)
-**Note:** Lines 217-219 execute correctly (early exit path when CLEAR threshold is met)
+**Why uncovered:** Line 218 is part of multi-line initializer; gcov reports it as uncovered but lines 219-220 are covered
+**Risk level:** NONE - Code executes correctly (gcov artifact)
+**Note:** Background detection logic was fixed by removing dead code (lines 229-238 removed)
 
-#### 3. Conversion Failure Error Paths (Lines 282-283, 313-314, 354-356)
+#### 3. Conversion Failure Error Paths (Lines 274-275, 305-306, 346-348)
 ```cpp
 if (!icv_to_u8_interleaved(bif, data, has_alpha)) {
-    bu_log("rle_write: conversion to 8-bit buffer failed\n");  // Line 282
-    return BRLCAD_ERROR;  // Line 283
+    bu_log("rle_write: conversion to 8-bit buffer failed\n");  // Line 274
+    return BRLCAD_ERROR;  // Line 275
 }
 
 if (!ok || err != rle::Error::OK) {
-    log_rle_error("rle_write", err);  // Line 313
-    return BRLCAD_ERROR;  // Line 314
+    log_rle_error("rle_write", err);  // Line 305
+    return BRLCAD_ERROR;  // Line 306
 }
 
 if (!u8_interleaved_to_icv(...)) {
-    bu_log("rle_read: buffer to icv image conversion failed\n");  // Line 354
-    bu_free(img, "icv_image");  // Line 355
-    return NULL;  // Line 356
+    bu_log("rle_read: buffer to icv image conversion failed\n");  // Line 346
+    bu_free(img, "icv_image");  // Line 347
+    return NULL;  // Line 348
 }
 ```
 **Why uncovered:** All test images are valid and conversions succeed
 **Risk level:** LOW - internal consistency checks for corrupted data
 
-#### 4. Dimension Overflow Check in rle_read() (Lines 343-345)
+#### 4. Dimension Overflow Check in rle_read() (Lines 335-337)
 ```cpp
 if (width > rle::MAX_DIM || height > rle::MAX_DIM) {
     bu_log("rle_read: dimensions exceed maximum (%u x %u)\n",
-           rle::MAX_DIM, rle::MAX_DIM);  // Line 343
-    return NULL;  // Line 345
+           rle::MAX_DIM, rle::MAX_DIM);  // Line 335
+    return NULL;  // Line 337
 }
 ```
 **Why uncovered:** Tests validate this in rle_write(), preventing invalid files
@@ -93,7 +92,7 @@ if (width > rle::MAX_DIM || height > rle::MAX_DIM) {
 
 ### Category 2: Branch Coverage Gaps
 
-**58.33% of branches taken at least once (112/192)**
+**60.00% of branches taken at least once (108/180)**
 
 Uncovered branches primarily involve:
 - Error condition branches (as detailed above)
@@ -117,14 +116,16 @@ To achieve near-complete coverage, the following tests could be added:
 
 ### ✅ Current Coverage Status: **EXCELLENT**
 
-The consolidated test suite achieves **87.70% line coverage** with excellent branch coverage (91.67%). The uncovered code paths fall into two categories:
+The consolidated test suite achieves **91.53% line coverage** with excellent branch coverage (93.33%). The uncovered code paths fall into two categories:
 
-1. **Defensive error handling** - Rare conditions that should not occur with valid inputs
+1. **Defensive error handling** - Rare conditions that should not occur with valid inputs (11 lines)
 2. **Internal consistency checks** - Redundant validations for robustness
+
+**Improvement:** Coverage increased from 87.70% to 91.53% after removing dead code from background detection.
 
 ### Coverage Strategy
 
-**No additional tests recommended at this time** because:
+**No additional tests recommended** because:
 
 1. All **functional code paths** are tested (100%)
 2. All **user-facing features** are tested (100%)
@@ -135,21 +136,24 @@ The consolidated test suite achieves **87.70% line coverage** with excellent bra
 
 ### Comparison with Original Test Files
 
-The consolidated test maintains identical coverage to the original four separate test files:
+The consolidated test maintains improved coverage compared to the original four separate test files:
 - Original coverage: ~88% (estimated from test counts)
-- Consolidated coverage: 87.70% (measured)
-- **Coverage maintained successfully** ✅
+- After consolidation: 87.70% (measured)
+- **After dead code removal: 91.53%** (current)
+- **Coverage improved by 3.83 percentage points** ✅
 
 ## Branch Coverage Details
 
-Total branches: 192
-- Executed: 176 (91.67%)
-- Taken at least once: 112 (58.33%)
+Total branches: 180
+- Executed: 168 (93.33%)
+- Taken at least once: 108 (60.00%)
 
 The difference between executed and taken represents branches where both paths were tested vs. only one path tested. This is expected for error handling code where the error path may not be triggered.
 
 ## Conclusion
 
-The consolidated test suite (`test_rle.cpp`) provides comprehensive coverage of all production code paths in `rle.cpp`. The 87.70% line coverage represents testing of all functional features, with the remaining 12.30% consisting of rare error conditions and defensive programming checks.
+The consolidated test suite (`test_rle.cpp`) provides comprehensive coverage of all production code paths in `rle.cpp`. The 91.53% line coverage represents testing of all functional features, with the remaining 8.47% consisting of rare error conditions and defensive programming checks.
+
+**Dead Code Removed:** Lines 229-238 in `detect_background()` were identified as unreachable and removed, improving both code quality and coverage.
 
 **Status: Code coverage verification complete** ✅
