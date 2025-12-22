@@ -112,6 +112,7 @@ int main() {
     
     bu_free(buggy->data, "data");
     bu_free(buggy, "img");
+    // Note: fixed->data was allocated with calloc, not bu_calloc, so use free()
     free(fixed->data);
     free(fixed);
     
