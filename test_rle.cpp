@@ -1144,6 +1144,279 @@ void test_long_skip_lines() {
 }
 
 //==============================================================================
+// SECTION 6B: Background Detection Threshold Tests
+//==============================================================================
+
+void test_bg_auto_detect_overlay_threshold() {
+    TEST("Auto background detection: OVERLAY threshold (20%)");
+    
+    // Create image where 25% of pixels are the same color (above OVERLAY_THRESH=20%)
+    const size_t w = 100, h = 100;
+    icv_image_t* img = create_test_image(w, h, 3);
+    EXPECT_TRUE(img != nullptr);
+    
+    // Fill 25% with red background color (2500 pixels)
+    size_t bg_count = 0;
+    for (size_t y = 0; y < h; y++) {
+        for (size_t x = 0; x < w; x++) {
+            size_t idx = (y * w + x) * 3;
+            if (bg_count < 2500) {  // 25% of 10000 pixels
+                img->data[idx + 0] = 1.0;  // Red background
+                img->data[idx + 1] = 0.0;
+                img->data[idx + 2] = 0.0;
+                bg_count++;
+            } else {
+                // Varied colors for remaining 75%
+                img->data[idx + 0] = (double)(x % 256) / 255.0;
+                img->data[idx + 1] = (double)(y % 256) / 255.0;
+                img->data[idx + 2] = (double)((x + y) % 256) / 255.0;
+            }
+        }
+    }
+    
+    // Write using automatic background detection
+    FILE* fp = std::fopen("test_bg_overlay_auto.rle", "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    // Read back and verify
+    fp = std::fopen("test_bg_overlay_auto.rle", "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* readback = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(readback != nullptr);
+    
+    if (readback) {
+        EXPECT_TRUE(pixels_match(img, readback));
+        free_test_image(readback);
+    }
+    
+    free_test_image(img);
+    std::remove("test_bg_overlay_auto.rle");
+    
+    END_TEST();
+}
+
+void test_bg_auto_detect_clear_threshold() {
+    TEST("Auto background detection: CLEAR threshold (50%)");
+    
+    // Create image where 55% of pixels are the same color (above CLEAR_THRESH=50%)
+    const size_t w = 100, h = 100;
+    icv_image_t* img = create_test_image(w, h, 3);
+    EXPECT_TRUE(img != nullptr);
+    
+    // Fill 55% with blue background color (5500 pixels)
+    size_t bg_count = 0;
+    for (size_t y = 0; y < h; y++) {
+        for (size_t x = 0; x < w; x++) {
+            size_t idx = (y * w + x) * 3;
+            if (bg_count < 5500) {  // 55% of 10000 pixels
+                img->data[idx + 0] = 0.0;  // Blue background
+                img->data[idx + 1] = 0.0;
+                img->data[idx + 2] = 1.0;
+                bg_count++;
+            } else {
+                // Varied colors for remaining 45%
+                img->data[idx + 0] = (double)((x * 7) % 256) / 255.0;
+                img->data[idx + 1] = (double)((y * 13) % 256) / 255.0;
+                img->data[idx + 2] = (double)((x + y) % 256) / 255.0;
+            }
+        }
+    }
+    
+    // Write using automatic background detection
+    FILE* fp = std::fopen("test_bg_clear_auto.rle", "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    // Read back and verify
+    fp = std::fopen("test_bg_clear_auto.rle", "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* readback = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(readback != nullptr);
+    
+    if (readback) {
+        EXPECT_TRUE(pixels_match(img, readback));
+        free_test_image(readback);
+    }
+    
+    free_test_image(img);
+    std::remove("test_bg_clear_auto.rle");
+    
+    END_TEST();
+}
+
+void test_bg_auto_detect_early_exit() {
+    TEST("Auto background detection: early exit when CLEAR threshold met");
+    
+    // Create image where majority is same color from the start
+    // This should trigger early exit in detect_background (line 215-220)
+    const size_t w = 80, h = 80;
+    icv_image_t* img = create_test_image(w, h, 3);
+    EXPECT_TRUE(img != nullptr);
+    
+    // Fill first 60% (3840 pixels) with green, meeting CLEAR threshold early
+    // Remaining 40% will be different colors
+    size_t total = w * h;
+    size_t bg_end = (total * 60) / 100;
+    
+    for (size_t i = 0; i < total; i++) {
+        size_t idx = i * 3;
+        if (i < bg_end) {
+            img->data[idx + 0] = 0.0;  // Green background
+            img->data[idx + 1] = 1.0;
+            img->data[idx + 2] = 0.0;
+        } else {
+            img->data[idx + 0] = (double)((i * 3) % 256) / 255.0;
+            img->data[idx + 1] = (double)((i * 5) % 256) / 255.0;
+            img->data[idx + 2] = (double)((i * 7) % 256) / 255.0;
+        }
+    }
+    
+    // Write and verify roundtrip
+    FILE* fp = std::fopen("test_bg_early_exit.rle", "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    fp = std::fopen("test_bg_early_exit.rle", "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* readback = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(readback != nullptr);
+    
+    if (readback) {
+        EXPECT_TRUE(pixels_match(img, readback));
+        free_test_image(readback);
+    }
+    
+    free_test_image(img);
+    std::remove("test_bg_early_exit.rle");
+    
+    END_TEST();
+}
+
+void test_bg_auto_detect_post_loop() {
+    TEST("Auto background detection: post-loop threshold check");
+    
+    // The post-loop check (lines 229-233) executes when:
+    // 1. bd.mode stays BG_SAVE_ALL throughout the loop (line 222 never executes)
+    // 2. After the loop, maxCount >= overlay_needed
+    //
+    // This happens when no single color dominates during iteration but
+    // one color's final count meets the threshold. We achieve this by
+    // ensuring the background color appears EXACTLY ONCE early,  then
+    // all other pixels until the last batch are unique, then the background
+    // color appears many times at the end.
+    const size_t w = 60, h = 60;  // 3600 pixels
+    icv_image_t* img = create_test_image(w, h, 3);
+    EXPECT_TRUE(img != nullptr);
+    
+    // First pixel: background color (count = 1)
+    img->data[0] = 0.5;
+    img->data[1] = 0.5;
+    img->data[2] = 0.5;
+    
+    // Next 2879 pixels: all unique (counts stay at 1)
+    for (size_t i = 1; i < 2880; i++) {
+        size_t idx = i * 3;
+        img->data[idx + 0] = (double)((i * 37) % 256) / 255.0;
+        img->data[idx + 1] = (double)((i * 41) % 256) / 255.0;
+        img->data[idx + 2] = (double)((i * 43) % 256) / 255.0;
+    }
+    
+    // Last 720 pixels (20%): background color again
+    // Now background count jumps from 1 to 721 (> 720 = 20% threshold)
+    for (size_t i = 2880; i < 3600; i++) {
+        size_t idx = i * 3;
+        img->data[idx + 0] = 0.5;
+        img->data[idx + 1] = 0.5;
+        img->data[idx + 2] = 0.5;
+    }
+    
+    FILE* fp = std::fopen("test_bg_post_loop.rle", "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    fp = std::fopen("test_bg_post_loop.rle", "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* readback = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(readback != nullptr);
+    
+    if (readback) {
+        EXPECT_TRUE(pixels_match(img, readback));
+        free_test_image(readback);
+    }
+    
+    free_test_image(img);
+    std::remove("test_bg_post_loop.rle");
+    
+    END_TEST();
+}
+
+void test_bg_auto_detect_post_loop_clear() {
+    TEST("Auto background detection: post-loop CLEAR threshold");
+    
+    // Similar to above but reaching CLEAR threshold (50%) after the loop
+    const size_t w = 60, h = 60;  // 3600 pixels
+    icv_image_t* img = create_test_image(w, h, 3);
+    EXPECT_TRUE(img != nullptr);
+    
+    // First pixel: background color (count = 1)
+    img->data[0] = 0.75;
+    img->data[1] = 0.75;
+    img->data[2] = 0.75;
+    
+    // Next 1799 pixels: all unique 
+    for (size_t i = 1; i < 1800; i++) {
+        size_t idx = i * 3;
+        img->data[idx + 0] = (double)((i * 47) % 256) / 255.0;
+        img->data[idx + 1] = (double)((i * 53) % 256) / 255.0;
+        img->data[idx + 2] = (double)((i * 59) % 256) / 255.0;
+    }
+    
+    // Last 1800 pixels (50%): background color
+    // Background count jumps from 1 to 1801 (> 1800 = 50% threshold)
+    for (size_t i = 1800; i < 3600; i++) {
+        size_t idx = i * 3;
+        img->data[idx + 0] = 0.75;
+        img->data[idx + 1] = 0.75;
+        img->data[idx + 2] = 0.75;
+    }
+    
+    FILE* fp = std::fopen("test_bg_post_clear.rle", "wb");
+    EXPECT_TRUE(fp != nullptr);
+    int result = rle_write(img, fp);
+    std::fclose(fp);
+    EXPECT_EQ(result, 0);
+    
+    fp = std::fopen("test_bg_post_clear.rle", "rb");
+    EXPECT_TRUE(fp != nullptr);
+    icv_image_t* readback = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(readback != nullptr);
+    
+    if (readback) {
+        EXPECT_TRUE(pixels_match(img, readback));
+        free_test_image(readback);
+    }
+    
+    free_test_image(img);
+    std::remove("test_bg_post_clear.rle");
+    
+    END_TEST();
+}
+
+//==============================================================================
 // SECTION 7: Reference Image Test
 //==============================================================================
 
@@ -1237,6 +1510,14 @@ int main() {
     test_long_run_data();
     test_long_skip_pixels();
     test_long_skip_lines();
+    
+    // Section 6B: Background Detection Threshold Tests
+    std::cout << "\n--- Background Detection Threshold Tests ---\n";
+    test_bg_auto_detect_overlay_threshold();
+    test_bg_auto_detect_clear_threshold();
+    test_bg_auto_detect_early_exit();
+    test_bg_auto_detect_post_loop();
+    test_bg_auto_detect_post_loop_clear();
     
     // Section 7: Reference Image Test
     std::cout << "\n--- Reference Image Tests ---\n";

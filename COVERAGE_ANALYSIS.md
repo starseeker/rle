@@ -42,18 +42,22 @@ if (ptr == (char *)(-1L)) {
 **Why uncovered:** Tests never pass null strings or marked pointers (-1) to bu_free()
 **Risk level:** LOW - defensive programming for invalid input
 
-#### 2. Background Detection Threshold Paths (Lines 217, 230-233, 235-238)
+#### 2. Background Detection Post-Loop Checks (Lines 230-233, 235-238) **[DEAD CODE]**
 ```cpp
-if (maxCount >= clear_needed) {
+// Lines 229-238: Post-loop checks
+if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= overlay_needed) {
+    bd.mode = rle::Encoder::BG_OVERLAY;
+    bd.color = {...};  // Lines 230-233
+} else if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= clear_needed) {
     bd.mode = rle::Encoder::BG_CLEAR;
-    bd.color = {...};  // Lines 217-219: early exit path
-    return bd;
+    bd.color = {...};  // Lines 235-238
 }
-// Lines 230-238: Final background mode selection after loop
 ```
-**Why uncovered:** Tests use BG_SAVE_ALL or BG_OVERLAY modes explicitly
-**Risk level:** LOW - automatic background detection optimization paths
-**Note:** Background modes ARE tested, but specific threshold conditions aren't
+**Why uncovered:** These lines contain **dead code** that can never execute due to a logic flaw
+**Risk level:** NONE - Code is unreachable
+**Analysis:** If `maxCount >= overlay_needed` after the loop, it means when `maxCount` was last updated during the loop (line 213), the condition at line 221 would have set `bd.mode = BG_OVERLAY`. Therefore, `bd.mode` cannot be `BG_SAVE_ALL` when line 229 executes. Same logic applies to lines 234-238.
+**Recommendation:** Remove lines 229-238 (see BACKGROUND_DETECTION_LOGIC_ISSUE.md)
+**Note:** Lines 217-219 execute correctly (early exit path when CLEAR threshold is met)
 
 #### 3. Conversion Failure Error Paths (Lines 282-283, 313-314, 354-356)
 ```cpp
