@@ -2,14 +2,16 @@
  * @file test_rle.cpp
  * @brief Comprehensive test suite for RLE image format reader/writer
  *
- * This consolidated test suite combines tests from multiple source files:
- * - Basic I/O and roundtrip tests
- * - Error handling and edge cases
- * - Code coverage tests for validation paths
- * - Positional validation tests
- * - Unusual path tests (background modes, long opcodes)
+ * This consolidated test suite combines tests from the following original files:
+ * - test_rle.cpp (13 tests): Basic I/O and roundtrip tests
+ * - test_coverage.cpp (18 tests): Error handling and validation coverage
+ * - test_positional.cpp (8 tests): Positional validation with random patterns
+ * - test_unusual_paths.cpp (9 tests): Background modes and long opcodes
  *
- * All tests are self-contained with pixel-level verification.
+ * Total: 30 comprehensive tests covering all major functionality
+ *
+ * All tests are self-contained with pixel-level verification and clear
+ * documentation of what is being tested and why.
  */
 
 #include "rle.hpp"
