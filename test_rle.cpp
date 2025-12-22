@@ -1439,13 +1439,79 @@ void test_teapot_image() {
         EXPECT_EQ(img->channels, 3u);
         
         bool has_data = false;
-        for (size_t i = 0; i < img->width * img->height * img->channels; i++) {
-            if (img->data[i] > 0.01) {
-                has_data = true;
-                break;
+        size_t black_rows = 0;
+        size_t data_rows = 0;
+        
+        for (size_t y = 0; y < img->height; y++) {
+            bool row_is_black = true;
+            for (size_t x = 0; x < img->width && row_is_black; x++) {
+                size_t idx = (y * img->width + x) * img->channels;
+                for (size_t c = 0; c < img->channels; c++) {
+                    if (img->data[idx + c] > 0.01) {
+                        row_is_black = false;
+                        has_data = true;
+                        break;
+                    }
+                }
             }
+            if (row_is_black) black_rows++; else data_rows++;
         }
+        
         EXPECT_TRUE(has_data);
+        
+        // Check for alternating black line pattern (known issue in original teapot.rle)
+        // The original file has SKIP_LINES after every row, causing every odd row to be black
+        if (black_rows > img->height / 4) {
+            std::cout << "\n  WARNING: teapot.rle has " << black_rows << " black rows (alternating line pattern)\n";
+            std::cout << "  This is a known issue with the original file created by rawtorle.\n";
+            std::cout << "  Use teapot_fixed.rle for a properly de-interlaced version.\n";
+        }
+        
+        free_test_image(img);
+    }
+    
+    END_TEST();
+}
+
+void test_teapot_fixed_image() {
+    TEST("Read teapot_fixed.rle (de-interlaced version)");
+    
+    FILE* fp = std::fopen("teapot_fixed.rle", "rb");
+    if (!fp) {
+        std::cout << "SKIPPED (teapot_fixed.rle not found)\n";
+        return;
+    }
+    
+    icv_image_t* img = rle_read(fp);
+    std::fclose(fp);
+    EXPECT_TRUE(img != nullptr);
+    
+    if (img) {
+        EXPECT_EQ(img->width, 256u);
+        EXPECT_EQ(img->height, 256u);
+        EXPECT_EQ(img->channels, 3u);
+        
+        bool has_data = false;
+        size_t black_rows = 0;
+        size_t data_rows = 0;
+        
+        for (size_t y = 0; y < img->height; y++) {
+            bool row_is_black = true;
+            for (size_t x = 0; x < img->width && row_is_black; x++) {
+                size_t idx = (y * img->width + x) * img->channels;
+                for (size_t c = 0; c < img->channels; c++) {
+                    if (img->data[idx + c] > 0.01) {
+                        row_is_black = false;
+                        has_data = true;
+                        break;
+                    }
+                }
+            }
+            if (row_is_black) black_rows++; else data_rows++;
+        }
+        
+        EXPECT_TRUE(has_data);
+        EXPECT_TRUE(black_rows < img->height / 4);  // Should not have many black rows
         
         free_test_image(img);
     }
@@ -1522,6 +1588,7 @@ int main() {
     // Section 7: Reference Image Test
     std::cout << "\n--- Reference Image Tests ---\n";
     test_teapot_image();
+    test_teapot_fixed_image();
     
     // Print summary
     g_stats.print_summary();

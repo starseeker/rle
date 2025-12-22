@@ -32,6 +32,7 @@ Thumbs.db
 *.rle
 test_image_roundtrip.rle
 !teapot.rle
+!teapot_fixed.rle
 
 # Coverage reports
 *.gcda
