@@ -213,12 +213,14 @@ BackgroundDecision detect_background(const std::vector<uint8_t> &rgb, size_t w, 
             maxCount = it->second;
             maxKey = key;
             if (maxCount >= clear_needed) {
+                // Early exit: 50%+ pixels are this color -> use CLEAR mode
                 bd.mode = rle::Encoder::BG_CLEAR;
                 bd.color = { uint8_t((maxKey >> 16) & 0xFF),
                              uint8_t((maxKey >> 8)  & 0xFF),
                              uint8_t(maxKey & 0xFF) };
                 return bd;
             } else if (maxCount >= overlay_needed && bd.mode != rle::Encoder::BG_OVERLAY) {
+                // 20%+ pixels are this color -> use OVERLAY mode
                 bd.mode = rle::Encoder::BG_OVERLAY;
                 bd.color = { uint8_t((maxKey >> 16) & 0xFF),
                              uint8_t((maxKey >> 8)  & 0xFF),
@@ -226,17 +228,7 @@ BackgroundDecision detect_background(const std::vector<uint8_t> &rgb, size_t w, 
             }
         }
     }
-    if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= overlay_needed) {
-        bd.mode = rle::Encoder::BG_OVERLAY;
-        bd.color = { uint8_t((maxKey >> 16) & 0xFF),
-                     uint8_t((maxKey >> 8)  & 0xFF),
-                     uint8_t(maxKey & 0xFF) };
-    } else if (bd.mode == rle::Encoder::BG_SAVE_ALL && maxCount >= clear_needed) {
-        bd.mode = rle::Encoder::BG_CLEAR;
-        bd.color = { uint8_t((maxKey >> 16) & 0xFF),
-                     uint8_t((maxKey >> 8)  & 0xFF),
-                     uint8_t(maxKey & 0xFF) };
-    }
+    // Loop completed: use the mode determined during iteration
     return bd;
 }
 
