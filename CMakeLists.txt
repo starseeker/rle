@@ -21,6 +21,14 @@ target_include_directories(rle_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(test_rle test_rle.cpp)
 target_link_libraries(test_rle PRIVATE rle_lib)
 
+# Lenna comparison tool
+add_executable(test_lenna_comparison test_lenna_comparison.cpp)
+target_link_libraries(test_lenna_comparison PRIVATE rle_lib)
+
+# RLE info dump tool
+add_executable(dump_rle_info dump_rle_info.cpp)
+target_link_libraries(dump_rle_info PRIVATE rle_lib)
+
 # Optional: Fuzz test executable (disabled by default, run manually)
 option(ENABLE_FUZZ_TESTS "Build fuzz test executable" OFF)
 if(ENABLE_FUZZ_TESTS)
