@@ -81,11 +81,9 @@ bu_log(const char *fmt, ...)
 
 namespace {
 
-// Detection thresholds for alternating line pattern
-constexpr size_t PATTERN_SAMPLE_COUNT = 20;      // Number of row pairs to check
-constexpr double UNIFORM_TOLERANCE = 0.001;       // Max variation for uniform row
-constexpr double PATTERN_DETECT_THRESHOLD = 0.8;  // 80% of odd rows must be uniform
-constexpr double VARIATION_THRESHOLD = 0.5;       // 50% of even rows must have variation
+// Detection thresholds for sparse row pattern
+constexpr size_t PATTERN_SAMPLE_COUNT = 20;         // Number of row pairs to check (legacy, not used in new detector)
+constexpr double UNIFORM_TOLERANCE = 0.001;          // Max variation for uniform row
 
 inline bool safe_mul_u64(uint64_t a, uint64_t b, uint64_t limit, uint64_t &out) {
     if (!a || !b) { out = 0; return true; }
@@ -255,20 +253,21 @@ void log_rle_error(const char *context, rle::Error e) {
 }
 
 /**
- * Detect and fix alternating line pattern caused by SKIP_LINES opcodes
+ * Detect and fix sparse row pattern caused by excessive SKIP_LINES opcodes
  * 
  * Some Utah RLE files from the original toolkit have SKIP_LINES opcodes
- * after every data row, causing the decoder to skip odd-numbered rows.
- * These skipped rows remain filled with the background color, creating
- * a visual artifact (horizontal banding / interlacing effect).
+ * after every data row, causing the decoder to skip rows. The number of
+ * skipped rows can be 1, 2, or more, creating various visual artifacts.
  * 
  * Detection strategy:
- * 1. Check if odd rows are significantly more uniform than even rows
- * 2. Check if odd rows have very low variance (likely background color)
- * 3. Require at least 80% of rows to match the pattern
+ * 1. Sample rows throughout the image
+ * 2. Identify which rows have actual image data (non-uniform rows)
+ * 3. Check if data rows follow a regular pattern (e.g., every 2nd, 3rd, or 4th row)
+ * 4. Require at least 60% of rows to be uniform (background/skipped)
  * 
  * Fix strategy:
- * - Duplicate each even row into the following odd row (de-interlacing)
+ * - Replicate each data row into the following skip rows
+ * - For pattern with period N: copy row i to rows i+1, i+2, ..., i+(N-1)
  * 
  * @param img The image to check and potentially fix (uses double data 0-1)
  * @return true if pattern was detected and fixed, false otherwise
@@ -282,73 +281,88 @@ bool detect_and_fix_alternating_pattern(icv_image_t* img) {
     const size_t height = img->height;
     const size_t channels = img->channels;
     
-    // Sample rows to detect pattern
-    const size_t sample_count = std::min(PATTERN_SAMPLE_COUNT, height / 2);
-    size_t uniform_odd_rows = 0;
-    size_t varied_even_rows = 0;
+    // Helper lambda to check if a row is uniform (all pixels have same RGB value)
+    // Note: We only check the color channels (RGB), not alpha, because alpha is
+    // often initialized to 255 uniformly, which would interfere with detection.
+    auto is_row_uniform = [&](size_t row) -> bool {
+        const size_t color_channels = (channels >= 4) ? 3 : channels;  // Check only RGB, not alpha
+        for (size_t c = 0; c < color_channels; c++) {
+            double first_val = img->data[(row * width) * channels + c];
+            for (size_t x = 0; x < width; x++) {
+                double val = img->data[(row * width + x) * channels + c];
+                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
     
-    for (size_t i = 0; i < sample_count; i++) {
-        // Sample even and odd row pairs throughout the image
-        size_t even_row = (i * 2 < height - 1) ? i * 2 : height - 2;
-        size_t odd_row = even_row + 1;
-        
-        if (odd_row >= height) continue;
-        
-        // Check if odd row is uniform (all pixels same value in each channel)
-        bool odd_is_uniform = true;
-        
-        for (size_t c = 0; c < channels && odd_is_uniform; c++) {
-            double first_val = img->data[(odd_row * width) * channels + c];
-            
-            for (size_t x = 0; x < width; x++) {
-                double val = img->data[(odd_row * width + x) * channels + c];
-                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
-                    odd_is_uniform = false;
-                    break;
-                }
-            }
-        }
-        
-        // Check if even row has variation (not all pixels the same)
-        bool even_has_variation = false;
-        
-        for (size_t c = 0; c < channels && !even_has_variation; c++) {
-            double first_val = img->data[(even_row * width) * channels + c];
-            
-            for (size_t x = 0; x < width; x++) {
-                double val = img->data[(even_row * width + x) * channels + c];
-                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
-                    even_has_variation = true;
-                    break;
-                }
-            }
-        }
-        
-        if (odd_is_uniform) {
-            uniform_odd_rows++;
-        }
-        if (even_has_variation) {
-            varied_even_rows++;
-        }
+    // Sample all rows to find which ones have data
+    std::vector<bool> row_has_data(height);
+    size_t uniform_count = 0;
+    
+    for (size_t y = 0; y < height; y++) {
+        bool uniform = is_row_uniform(y);
+        row_has_data[y] = !uniform;
+        if (uniform) uniform_count++;
     }
     
-    // Require sufficient percentage of sampled rows to match the pattern
-    bool has_alternating_pattern = (uniform_odd_rows >= sample_count * PATTERN_DETECT_THRESHOLD) &&
-                                   (varied_even_rows >= sample_count * VARIATION_THRESHOLD);
-    
-    if (!has_alternating_pattern) {
+    // Require at least 60% of rows to be uniform to consider this as a sparse pattern
+    if (uniform_count < height * 0.6) {
         return false;
     }
     
-    // Apply de-interlacing: Copy even rows into odd rows
-    for (size_t y = 1; y < height; y += 2) {
-        size_t even_row = y - 1;
-        size_t odd_row = y;
+    // Find the positions of data rows
+    std::vector<size_t> data_rows;
+    for (size_t y = 0; y < height; y++) {
+        if (row_has_data[y]) {
+            data_rows.push_back(y);
+        }
+    }
+    
+    if (data_rows.size() < 2) {
+        return false;  // Need at least 2 data rows to detect a pattern
+    }
+    
+    // Try to detect the period (spacing between data rows)
+    // Common patterns: every 2nd row (period=2), every 3rd row (period=3), every 4th row (period=4)
+    std::vector<int> periods_to_test = {2, 3, 4, 5};
+    int detected_period = 0;
+    
+    for (int period : periods_to_test) {
+        size_t matches = 0;
+        for (size_t i = 0; i + 1 < data_rows.size(); i++) {
+            int diff = static_cast<int>(data_rows[i+1] - data_rows[i]);
+            if (diff == period) {
+                matches++;
+            }
+        }
         
-        // Copy entire row
-        std::memcpy(&img->data[(odd_row * width) * channels],
-                   &img->data[(even_row * width) * channels],
-                   width * channels * sizeof(double));
+        // If at least 70% of consecutive data row pairs have this spacing
+        if (matches >= (data_rows.size() - 1) * 0.7) {
+            detected_period = period;
+            break;
+        }
+    }
+    
+    if (detected_period == 0) {
+        return false;  // No regular pattern detected
+    }
+    
+    // Apply de-interlacing: replicate data rows into the following skip rows
+    for (size_t i = 0; i < data_rows.size(); i++) {
+        size_t data_row = data_rows[i];
+        
+        // Copy this row into the following rows up to the next data row or period rows
+        size_t next_data_row = (i + 1 < data_rows.size()) ? data_rows[i + 1] : height;
+        size_t max_copy = std::min(data_row + detected_period, next_data_row);
+        
+        for (size_t dest_row = data_row + 1; dest_row < max_copy; dest_row++) {
+            std::memcpy(&img->data[(dest_row * width) * channels],
+                       &img->data[(data_row * width) * channels],
+                       width * channels * sizeof(double));
+        }
     }
     
     return true;
@@ -455,20 +469,21 @@ rle_read(FILE *fp)
         return NULL;
     }
 
-    /* Fault-tolerant mode: Detect and fix alternating line pattern
-     * Some Utah RLE files (from the original toolkit) have SKIP_LINES
-     * opcodes after every data row, causing odd rows to be filled with
-     * background color. This creates visual artifacts (horizontal banding).
+    /* Fault-tolerant mode: Detect and fix sparse row pattern
+     * Some Utah RLE files (from the original toolkit) have excessive SKIP_LINES
+     * opcodes after data rows, causing the decoder to skip multiple rows.
+     * These skipped rows remain filled with background color, creating visual
+     * artifacts (horizontal banding with period 2, 3, or more).
      * 
-     * Detection: Check if odd rows are all uniform (background color)
-     * while even rows have variation.
+     * Detection: Check if most rows are uniform (background) and the non-uniform
+     * rows follow a regular pattern (e.g., every 2nd, 3rd, or 4th row).
      * 
-     * Fix: Duplicate even rows into odd rows (de-interlacing).
+     * Fix: Replicate each data row into the following skip rows.
      */
     if (detect_and_fix_alternating_pattern(img)) {
-        bu_log("rle_read: WARNING - Detected and corrected alternating line pattern\n");
-        bu_log("  This file has SKIP_LINES opcodes after each data row.\n");
-        bu_log("  Applied de-interlacing by duplicating even rows into odd rows.\n");
+        bu_log("rle_read: WARNING - Detected and corrected sparse row pattern\n");
+        bu_log("  This file has excessive SKIP_LINES opcodes causing rows to be skipped.\n");
+        bu_log("  Applied de-interlacing by replicating data rows into skipped rows.\n");
     }
 
     return img;
