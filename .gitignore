@@ -52,3 +52,5 @@ coverage_final.info
 # Test programs
 test_deinterlace
 test_deinterlace.cpp
+/build/
+rle_to_ppm

@@ -29,6 +29,10 @@ target_link_libraries(test_comprehensive PRIVATE rle_lib)
 add_executable(test_ground_truth test_ground_truth.cpp)
 target_link_libraries(test_ground_truth PRIVATE rle_lib)
 
+# RLE to PPM converter utility
+add_executable(rle_to_ppm rle_to_ppm.cpp)
+target_link_libraries(rle_to_ppm PRIVATE rle_lib)
+
 # Optional: Fuzz test executable (disabled by default, run manually)
 option(ENABLE_FUZZ_TESTS "Build fuzz test executable" OFF)
 if(ENABLE_FUZZ_TESTS)
