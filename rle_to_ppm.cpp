@@ -1,3 +1,23 @@
+/*
+ * rle_to_ppm - Convert Utah RLE format to PPM format
+ *
+ * This utility demonstrates the RLE decoder's colormap support by
+ * converting RLE files (with or without colormaps) to standard PPM format.
+ *
+ * Usage:
+ *   rle_to_ppm input.rle [output.ppm]
+ *
+ * Features:
+ *   - Applies colormaps correctly (if present in RLE file)
+ *   - Handles RGB and RGBA images (alpha channel discarded in PPM)
+ *   - Converts grayscale to RGB for PPM compatibility
+ *   - Can decode files that ImageMagick's convert cannot (e.g., mandrill.rle)
+ *
+ * Examples:
+ *   rle_to_ppm mandrill.rle mandrill.ppm
+ *   rle_to_ppm lenna.rle > lenna.ppm
+ */
+
 #include "rle.hpp"
 #include <cstdio>
 
