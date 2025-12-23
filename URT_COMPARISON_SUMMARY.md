@@ -53,7 +53,7 @@ When the decoder encounters `SKIP_LINES 1` after row 0:
 ## Comparison
 
 | Aspect | Original URT | Our Implementation |
-|--------|-------------|-------------------|
+|--------|--------------|-------------------|
 | **Encoder behavior** | Outputs SKIP_LINES after every row | Only for background rows |
 | **File correctness** | Contains artifacts | Correct |
 | **File size** | Larger (unnecessary opcodes) | Smaller (optimized) |

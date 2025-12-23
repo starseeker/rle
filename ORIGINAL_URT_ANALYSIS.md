@@ -186,7 +186,7 @@ if (!header.no_background() && !header.background.empty()) {
 ## Comparison Table
 
 | Aspect | Original URT | Our Implementation |
-|--------|-------------|-------------------|
+|--------|--------------|-------------------|
 | **Encoder Output** | SKIP_LINES after EVERY row | SKIP_LINES only for background rows |
 | **File Size** | Larger (unnecessary opcodes) | Smaller (optimized) |
 | **Decoder Buffer** | Reused without clearing | Initialized to background |
