@@ -29,6 +29,16 @@ target_link_libraries(test_lenna_comparison PRIVATE rle_lib)
 add_executable(dump_rle_info dump_rle_info.cpp)
 target_link_libraries(dump_rle_info PRIVATE rle_lib)
 
+# RLE to PPM converter
+add_executable(convert_rle_to_ppm convert_rle_to_ppm.cpp)
+target_link_libraries(convert_rle_to_ppm PRIVATE rle_lib)
+
+# Find image offset tool
+add_executable(find_image_offset find_image_offset.cpp)
+
+# Analyze RLE opcodes tool
+add_executable(analyze_rle_opcodes analyze_rle_opcodes.cpp)
+
 # Optional: Fuzz test executable (disabled by default, run manually)
 option(ENABLE_FUZZ_TESTS "Build fuzz test executable" OFF)
 if(ENABLE_FUZZ_TESTS)
