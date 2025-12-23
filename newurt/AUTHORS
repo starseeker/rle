@@ -1,0 +1,49 @@
+The UtahRLE code base is quite old - the current project and its
+maintainers are merely the latest in a long history of contributors
+to the toolkit.  The Original Authors are (based on URT's
+documentation:)
+
+Spencer W. Thomas
+EECS Department
+University of Michigan
+Ann Arbor, MI 48109
+
+Rod G. Bogart
+Computer-Aided Engineering Network
+University of Michigan
+Chrysler Building
+Ann Arbor, MI 48109
+
+James Painter
+Computer Science Department
+University of Utah
+Salt Lake City, UT 84112
+
+Our thanks to some beta testers (and contributors):
+	Eric Haines, 3D Eye
+	Gregg Townsend, CS Dept., U of Arizona
+	John Peterson, Apple Computer
+And to all of you who submitted new programs or ideas for new
+features, especially Craig Kolb (Yale), whose 'rayshade' program provided
+(indirectly) the incentive for this release.
+
+A special thanks to Martin Friedmann, MIT Media Lab, who almost
+totally revamped the 'getx11' program, so that it now works correctly,
+and is the most featurful of all the toolkit programs.
+
+
+More recent contributions have come from a wide variety of developers.
+From the BRL-CAD development team, we have (apologies to anyone I missed):
+
+Christopher Sean Morrison
+Erik Greenwald
+Charles Kennedy
+Lee Butler
+Robert Parker
+Clifford Yapp
+John Anderson
+Robert Hartley
+Michael John Muuss
+Glenn Durfee
+Paul Stay
+

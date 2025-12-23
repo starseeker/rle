@@ -1,0 +1,42 @@
+
+		     THE UTAH RASTER TOOLKIT LIBRARY
+                      Version 3.1c - Dec 5, 2012
+
+The utahrle library from the Utah Raster Toolkit is a collection of C routines
+for dealing with raster images commonly encountered in computer graphics.  It
+provides the following major functions:
+
+  * A device and system independent image format for storing images and
+    information about them.  Called the RLE format, it uses run length encoding
+    to reduce storage space for most images.
+
+  * A library of C routines for reading, writing and manipulating images stored
+    in the RLE format.
+
+
+The Format:
+
+  The device independent RLE file has two parts, the header, which stores
+  information about the image (size, position, channel information,
+  color maps, comments, etc), and the actual image data in a run length
+  encoded format.  The RLE format often requires about a third of the
+  available space for most "image synthesis" style images.  If the image
+  does not compress well, the RLE format stores it as straight pixel data
+  with little extra overhead.  The format was first developed around
+  1983 at the University of Utah.
+
+The Library:
+
+  C routines are provided for setting up and reading the image header,
+  and for reading and writing the image a scanline at a time.  Images can
+  be read or written using two different methods.  Using the "row" method,
+  the library performs the RLE encoding and decoding.  With the "raw" method,
+  scanlines are constructed directly with RLE opcodes.  Additional routines
+  are available for generating dither matrices (e.g., for display programs
+  running on devices with less than 24 bits of color).
+
+NOTES ABOUT THIS COPY:
+
+  The programs included with the original URT distributions have been removed -
+  we include only the C library.
+
