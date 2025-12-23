@@ -60,3 +60,7 @@ if(ENABLE_COVERAGE)
         target_link_options(test_rle PRIVATE --coverage)
     endif()
 endif()
+
+# Test deinterlace
+add_executable(test_deinterlace test_deinterlace.cpp)
+target_link_libraries(test_deinterlace PRIVATE rle_lib)
