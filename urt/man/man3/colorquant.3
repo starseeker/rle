@@ -1,0 +1,102 @@
+.TH COLORQUANT 3 "August 14, 1989"
+.UC 4
+.SH NAME
+colorquant \- variance-based color quantization
+.SH SYNOPSIS
+.HP
+.B
+int colorquant(red, green, blue, npix, colormap, colors, bits, rgbmap, fast, otherimages)
+.LP
+.B
+unsigned char *red, *green, *blue;
+.br
+.B
+unsigned long npix;
+.br
+.B
+unsigned char *colormap[3];
+.br
+.B
+int colors, bits;
+.br
+.B
+unsigned char *rgbmap;
+.br
+.B
+int fast;
+.br
+.B
+int otherimages;
+.SH DESCRIPTION
+.I Colorquant 
+performs variance-based color quantization on a given image.
+A representative colormap
+and a table for performing RGB to colormap index mapping are computed.  The
+number of colors to which the image was quantized (the total number
+of colormap entries computed) is returned.
+The arguments to
+.I colorquant 
+are:
+.TP
+.I red, green, blue
+The red, green and blue channels of the image.  The ith pixel is represented
+as the RGB triple (\fIred\fR[i], \fIgreen\fR[i], \fIblue\fR[i]).  These
+arrays usually contain values that have been 'prequantized' (see below).
+.TP
+.I npix
+The length, in bytes, of the \fIred\fR, \fIgreen\fR and \fIblue\fR arrays.
+Equal to the total number of pixels in the image.
+.TP
+.I colormap
+Points to a pre-allocated, three-channel colormap.  These arrays will be
+filled with the colormap values computed by the variance-based color
+quantization algorithm.  \fIcolormap\fR[0][i], \fIcolormap\fR[1][i], and
+\fIcolormap\fR[2][i] are, respectively, the red, green and blue components
+of the ith colormap entry.
+.TP
+.I colors
+The number of pre-allocated colormap entries.  The image will be quantized to
+at most this many colors.
+.TP
+.I bits
+The number of significant bits in each entry of the \fIred\fR, \fIgreen\fR and
+\fIblue\fR arrays.  Normally, the red, green and blue arrays contain
+values that have been prequantized to fewer than eight
+significant bits.
+Five significant bits usually represents a good tradeoff between image quality
+and running time.  Anything above six significant bits will likely lead to
+excessive paging, as the size of \fIrgbmap\fR and the internal histogram are
+proportional to (2^\fIbits\fR)^3. 
+.TP
+.I rgbmap
+A pointer to an array of unsigned chars of size (2^\fIbits\fR)^3.
+This array is used
+to map from pixels to colormap entries.  The prequantized red, green
+and blue components of a pixel are used as an index into this array
+to retrieve the colormap index that should be used to represent the
+pixel.  The array is indexed as:
+.ce 1
+colorindex = \fIrgbmap\fR[(((r << \fIbits\fR) | g) << \fIbits\fR) | b];
+where r, g, and b are the prequantized red, green and blue components of
+the pixel in question.
+.TP
+.I fast
+If non-zero, the construction of rgbmap will be relatively fast.  If
+zero, \fIrgbmap\fR will be built slowly but more accurately.  In most cases,
+the error introduced by the 'fast' approximation is barely noticeable.
+.TP
+.I otherimages
+If non-zero, the rgbmap will be constructed as a complete inverse map.  This
+is necessary when the map is going to be used for images other than the one
+given, or for dithering (which creates colors not in the original image).
+This is much slower than normal map construction, because all inverse
+mappings are calculated.  The normal case just computes inverse mappings for 
+the pixel colors of the image.
+.SH AUTHOR
+Craig Kolb, Yale University.
+.SH REFERENCE
+Wan, Wong, and Prusinkiewicz,
+\fIAn Algorithm for Multidimensional Data Clustering,\fR
+Transactions on Mathematical Software, Vol. 14 #2 (June, 1988), pp. 153-162.
+.SH SEE ALSO
+.IR rlequant (1).

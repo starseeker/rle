@@ -1,0 +1,20 @@
+Some sample RLE images.  Some of these are used in the examples in the
+paper in the docs/ directory.
+
+christmas_ball.rle	- A cute ray-traced scene that Rod Bogart used
+			  for his Christmas card a few years back.
+dart.rle		- A dart, with alpha mask.  Model by John Peterson
+			  and Tom McCollough.
+mandrill.rle		- The infamous digital monkey.
+lenna.rle		- Lenna Sjooblom, Miss November 1972.
+			  (No kidding, Rod looked it up.  The first two
+			  o's should have dots over them...)
+tack_w_shadow.rle	- A tack, for hanging your RLE pictures on the walls.
+			  Model by Rod Bogart.
+			  This picture turns out to be a good one for
+			  catching some pathological cases, as it as a
+			  few "extra" scanlines above the "top" of the
+			  image (as advertised in the header).  Not
+			  sure how this happened.
+
+		
