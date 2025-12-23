@@ -110,7 +110,9 @@ uint64_t calculate_sad(const PPMImage* img1, const PPMImage* img2,
             size_t idx2 = (img2_y * img2->width + img2_x) * 3;
             
             for (int c = 0; c < 3; c++) {
-                sad += abs(img1->data[idx1 + c] - img2->data[idx2 + c]);
+                int diff = std::abs(static_cast<int>(img1->data[idx1 + c]) - 
+                                   static_cast<int>(img2->data[idx2 + c]));
+                sad += diff;
             }
         }
     }

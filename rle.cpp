@@ -13,6 +13,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -79,6 +80,12 @@ bu_log(const char *fmt, ...)
 
 
 namespace {
+
+// Detection thresholds for alternating line pattern
+constexpr size_t PATTERN_SAMPLE_COUNT = 20;      // Number of row pairs to check
+constexpr double UNIFORM_TOLERANCE = 0.001;       // Max variation for uniform row
+constexpr double PATTERN_DETECT_THRESHOLD = 0.8;  // 80% of odd rows must be uniform
+constexpr double VARIATION_THRESHOLD = 0.5;       // 50% of even rows must have variation
 
 inline bool safe_mul_u64(uint64_t a, uint64_t b, uint64_t limit, uint64_t &out) {
     if (!a || !b) { out = 0; return true; }
@@ -275,8 +282,8 @@ bool detect_and_fix_alternating_pattern(icv_image_t* img) {
     const size_t height = img->height;
     const size_t channels = img->channels;
     
-    // Sample rows to detect pattern (check first 20 row pairs)
-    const size_t sample_count = std::min(size_t(20), height / 2);
+    // Sample rows to detect pattern
+    const size_t sample_count = std::min(PATTERN_SAMPLE_COUNT, height / 2);
     size_t uniform_odd_rows = 0;
     size_t varied_even_rows = 0;
     
@@ -295,7 +302,7 @@ bool detect_and_fix_alternating_pattern(icv_image_t* img) {
             
             for (size_t x = 0; x < width; x++) {
                 double val = img->data[(odd_row * width + x) * channels + c];
-                if (std::fabs(val - first_val) > 0.001) {
+                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
                     odd_is_uniform = false;
                     break;
                 }
@@ -310,7 +317,7 @@ bool detect_and_fix_alternating_pattern(icv_image_t* img) {
             
             for (size_t x = 0; x < width; x++) {
                 double val = img->data[(even_row * width + x) * channels + c];
-                if (std::fabs(val - first_val) > 0.001) {
+                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
                     even_has_variation = true;
                     break;
                 }
@@ -325,9 +332,9 @@ bool detect_and_fix_alternating_pattern(icv_image_t* img) {
         }
     }
     
-    // Require at least 80% of sampled rows to match the pattern
-    bool has_alternating_pattern = (uniform_odd_rows >= sample_count * 0.8) &&
-                                   (varied_even_rows >= sample_count * 0.5);
+    // Require sufficient percentage of sampled rows to match the pattern
+    bool has_alternating_pattern = (uniform_odd_rows >= sample_count * PATTERN_DETECT_THRESHOLD) &&
+                                   (varied_even_rows >= sample_count * VARIATION_THRESHOLD);
     
     if (!has_alternating_pattern) {
         return false;
