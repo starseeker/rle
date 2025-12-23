@@ -45,3 +45,10 @@ coverage_test.info
 coverage_total.info
 coverage_new.info
 coverage_final.info
+*_decoded.ppm
+*_corrected.ppm
+*.ppm.tmp
+
+# Test programs
+test_deinterlace
+test_deinterlace.cpp

@@ -13,6 +13,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -79,6 +80,12 @@ bu_log(const char *fmt, ...)
 
 
 namespace {
+
+// Detection thresholds for alternating line pattern
+constexpr size_t PATTERN_SAMPLE_COUNT = 20;      // Number of row pairs to check
+constexpr double UNIFORM_TOLERANCE = 0.001;       // Max variation for uniform row
+constexpr double PATTERN_DETECT_THRESHOLD = 0.8;  // 80% of odd rows must be uniform
+constexpr double VARIATION_THRESHOLD = 0.5;       // 50% of even rows must have variation
 
 inline bool safe_mul_u64(uint64_t a, uint64_t b, uint64_t limit, uint64_t &out) {
     if (!a || !b) { out = 0; return true; }
@@ -247,6 +254,106 @@ void log_rle_error(const char *context, rle::Error e) {
     bu_log("%s: RLE error: %s\n", context, rle::error_string(e));
 }
 
+/**
+ * Detect and fix alternating line pattern caused by SKIP_LINES opcodes
+ * 
+ * Some Utah RLE files from the original toolkit have SKIP_LINES opcodes
+ * after every data row, causing the decoder to skip odd-numbered rows.
+ * These skipped rows remain filled with the background color, creating
+ * a visual artifact (horizontal banding / interlacing effect).
+ * 
+ * Detection strategy:
+ * 1. Check if odd rows are significantly more uniform than even rows
+ * 2. Check if odd rows have very low variance (likely background color)
+ * 3. Require at least 80% of rows to match the pattern
+ * 
+ * Fix strategy:
+ * - Duplicate each even row into the following odd row (de-interlacing)
+ * 
+ * @param img The image to check and potentially fix (uses double data 0-1)
+ * @return true if pattern was detected and fixed, false otherwise
+ */
+bool detect_and_fix_alternating_pattern(icv_image_t* img) {
+    if (!img || !img->data || img->height < 4) {
+        return false;
+    }
+    
+    const size_t width = img->width;
+    const size_t height = img->height;
+    const size_t channels = img->channels;
+    
+    // Sample rows to detect pattern
+    const size_t sample_count = std::min(PATTERN_SAMPLE_COUNT, height / 2);
+    size_t uniform_odd_rows = 0;
+    size_t varied_even_rows = 0;
+    
+    for (size_t i = 0; i < sample_count; i++) {
+        // Sample even and odd row pairs throughout the image
+        size_t even_row = (i * 2 < height - 1) ? i * 2 : height - 2;
+        size_t odd_row = even_row + 1;
+        
+        if (odd_row >= height) continue;
+        
+        // Check if odd row is uniform (all pixels same value in each channel)
+        bool odd_is_uniform = true;
+        
+        for (size_t c = 0; c < channels && odd_is_uniform; c++) {
+            double first_val = img->data[(odd_row * width) * channels + c];
+            
+            for (size_t x = 0; x < width; x++) {
+                double val = img->data[(odd_row * width + x) * channels + c];
+                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
+                    odd_is_uniform = false;
+                    break;
+                }
+            }
+        }
+        
+        // Check if even row has variation (not all pixels the same)
+        bool even_has_variation = false;
+        
+        for (size_t c = 0; c < channels && !even_has_variation; c++) {
+            double first_val = img->data[(even_row * width) * channels + c];
+            
+            for (size_t x = 0; x < width; x++) {
+                double val = img->data[(even_row * width + x) * channels + c];
+                if (std::fabs(val - first_val) > UNIFORM_TOLERANCE) {
+                    even_has_variation = true;
+                    break;
+                }
+            }
+        }
+        
+        if (odd_is_uniform) {
+            uniform_odd_rows++;
+        }
+        if (even_has_variation) {
+            varied_even_rows++;
+        }
+    }
+    
+    // Require sufficient percentage of sampled rows to match the pattern
+    bool has_alternating_pattern = (uniform_odd_rows >= sample_count * PATTERN_DETECT_THRESHOLD) &&
+                                   (varied_even_rows >= sample_count * VARIATION_THRESHOLD);
+    
+    if (!has_alternating_pattern) {
+        return false;
+    }
+    
+    // Apply de-interlacing: Copy even rows into odd rows
+    for (size_t y = 1; y < height; y += 2) {
+        size_t even_row = y - 1;
+        size_t odd_row = y;
+        
+        // Copy entire row
+        std::memcpy(&img->data[(odd_row * width) * channels],
+                   &img->data[(even_row * width) * channels],
+                   width * channels * sizeof(double));
+    }
+    
+    return true;
+}
+
 } /* anonymous namespace */
 
 /* -------------------- Public API -------------------- */
@@ -346,6 +453,22 @@ rle_read(FILE *fp)
         bu_log("rle_read: buffer to icv image conversion failed\n");
         bu_free(img, "icv_image");
         return NULL;
+    }
+
+    /* Fault-tolerant mode: Detect and fix alternating line pattern
+     * Some Utah RLE files (from the original toolkit) have SKIP_LINES
+     * opcodes after every data row, causing odd rows to be filled with
+     * background color. This creates visual artifacts (horizontal banding).
+     * 
+     * Detection: Check if odd rows are all uniform (background color)
+     * while even rows have variation.
+     * 
+     * Fix: Duplicate even rows into odd rows (de-interlacing).
+     */
+    if (detect_and_fix_alternating_pattern(img)) {
+        bu_log("rle_read: WARNING - Detected and corrected alternating line pattern\n");
+        bu_log("  This file has SKIP_LINES opcodes after each data row.\n");
+        bu_log("  Applied de-interlacing by duplicating even rows into odd rows.\n");
     }
 
     return img;
