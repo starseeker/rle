@@ -48,6 +48,8 @@ coverage_final.info
 *_decoded.ppm
 *_corrected.ppm
 *.ppm.tmp
+test_*.ppm
+!imgs_*_decoded.ppm
 
 # Test programs
 test_deinterlace

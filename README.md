@@ -48,17 +48,25 @@ make
 ctest
 
 # Run individual test suites
-./test_rle          # Basic functionality tests
-./test_coverage     # Code coverage tests
-./test_positional   # Positional accuracy tests
+./build/test_rle                  # Basic functionality tests (35 tests)
+./build/test_imgs_verification    # ImageMagick ground truth verification (5 images)
 ```
 
 ### Test Results
 
-All 40 tests pass with 100% success rate:
-- **test_rle**: 14/14 passed
-- **test_coverage**: 18/18 passed  
-- **test_positional**: 8/8 passed
+All tests pass with 100% success rate:
+- **test_rle**: 35/35 passed - Basic I/O, alpha channel, error handling, format validation
+- **test_imgs_verification**: 5/5 passed - Decoder/encoder verification against ImageMagick ground truth
+  - christmas_ball.rle (400x400 RGBA) - ✓ Perfect match
+  - dart.rle (510x480 RGBA) - ✓ Perfect match
+  - lenna.rle (512x480 RGB) - ✓ Perfect match
+  - mandrill.rle (512x480 RGB) - ✓ Perfect match
+  - tack_w_shadow.rle (62x50 RGBA) - ✓ Perfect match
+
+The verification test validates:
+1. **Decoder accuracy**: Our decoder produces identical output to ImageMagick
+2. **Encoder correctness**: Successfully encodes decoded image data
+3. **Roundtrip fidelity**: Decode → Encode → Decode preserves all pixel data
 
 ## API Usage
 

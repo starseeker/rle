@@ -64,3 +64,8 @@ endif()
 # Test deinterlace
 add_executable(test_deinterlace test_deinterlace.cpp)
 target_link_libraries(test_deinterlace PRIVATE rle_lib)
+
+# Comprehensive verification test against ImageMagick ground truth
+add_executable(test_imgs_verification test_imgs_verification.cpp)
+target_link_libraries(test_imgs_verification PRIVATE rle_lib)
+add_test(NAME imgs_verification COMMAND test_imgs_verification WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
