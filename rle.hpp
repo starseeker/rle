@@ -475,10 +475,11 @@ public:
             
             if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
                 uint32_t start = rle_y;
-                while (rle_y < H) {
-                    buffer_y = (H - 1) - rle_y;
-                    if (!row_is_background(img, buffer_y) || (rle_y - start) >= 65535) break;
+                ++rle_y;  // Start counting from next scanline
+                buffer_y = (H - 1) - rle_y;
+                while (rle_y < H && row_is_background(img, buffer_y) && (rle_y - start) < 65535) {
                     ++rle_y;
+                    buffer_y = (H - 1) - rle_y;
                 }
                 uint32_t skipCount = rle_y - start;
                 if (skipCount <= 255) {
