@@ -14,6 +14,13 @@
  *   - SkipLines / SkipPixels operands are direct counts (no +1).
  *   - SetColor operand 255 selects alpha channel (logical -1).
  *
+ * CRITICAL COORDINATE SYSTEM DETAIL (not explicit in original spec):
+ *   - RLE uses bottom-up coordinates: y=0 is at BOTTOM of image
+ *   - Decoders must convert to top-down buffer coords: buffer_y = (H-1) - scan_y
+ *   - Encoders must emit SkipLines(1) after each scanline to advance scan_y
+ *   - Without explicit SkipLines, all channel data writes to same y coordinate
+ *   - This behavior matches ImageMagick and Utah RLE reference implementations
+ *
  * HARDENING:
  *   - Dimension, pixel count, colormap, comment length, and allocation caps.
  *   - Overflow-safe multiplication and allocation checks.
@@ -466,6 +473,23 @@ public:
         const uint32_t H = h.height();
         const uint8_t chans = h.channels();
 
+        /* ENCODER COORDINATE SYSTEM AND SCANLINE ADVANCEMENT:
+         * 
+         * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
+         * This is implicit in the spec but critical for correct operation.
+         * 
+         * Coordinate conversion (matches decoder's inverse):
+         * - rle_y: RLE logical scanline (0 = bottom of image per spec)
+         * - buffer_y: Memory buffer row (0 = top, standard row-major order)
+         * - Conversion: buffer_y = (H - 1) - rle_y
+         * 
+         * After writing all channels for a scanline, we emit SkipLines(1) to advance
+         * to the next RLE scanline. Without this, the decoder would write the next
+         * scanline's data to the same y coordinate.
+         * 
+         * This matches ImageMagick's behavior and is required by the format, though
+         * not explicitly documented in the original Utah RLE specification.
+         */
         // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
         // Image buffer uses top-down coordinates (buffer_y=0 at top).
         // Conversion: buffer_y = (H - 1) - rle_y
@@ -592,6 +616,34 @@ public:
         const uint32_t ymin = h.ypos;
         const uint8_t  chans = h.channels();
 
+        /* COORDINATE SYSTEM CLARIFICATION:
+         * 
+         * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
+         * This caused confusion in the original implementation:
+         * 
+         * ORIGINAL (WRONG) INTERPRETATION:
+         * - Decoder stored pixels directly at scan_y (bottom-up storage)
+         * - Assumed output tools would flip the image when displaying
+         * - Result: Image data stored upside-down in memory
+         * 
+         * CORRECT INTERPRETATION (matching ImageMagick/Utah RLE reference):
+         * - scan_y tracks RLE's logical scanline number (0 = bottom)
+         * - Decoder CONVERTS to standard top-down buffer coordinates during write
+         * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
+         * - Result: Image stored right-side-up in standard row-major format
+         * 
+         * This is evident in ImageMagick rle.c line 444:
+         *   offset = ((image->rows - y - 1) * image->columns * number_planes) + ...
+         * where 'y' is the RLE scanline (0=bottom) and (rows-y-1) converts to buffer row.
+         * 
+         * SCANLINE ADVANCEMENT:
+         * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
+         * to advance scanlines. The decoder's scan_y only increments via SkipLines, NOT
+         * implicitly when channels complete. This means:
+         * - Channels can be written in any order within a scanline
+         * - Moving to the next scanline requires an explicit SkipLines(1) opcode
+         * - Without SkipLines, all data goes to the same scanline (y coordinate)
+         */
         uint32_t scan_y = ymin;
         int current_channel = -1;
         uint32_t scan_x = xmin;
