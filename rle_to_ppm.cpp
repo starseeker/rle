@@ -56,18 +56,58 @@ int main(int argc, char** argv) {
     
     // Write pixel data (RGB only, ignore alpha if present)
     // Note: RLE format uses bottom-up scanlines (y=0 at bottom), 
-    // but PPM expects top-down (y=0 at top), so we write rows in reverse order
+    // but PPM expects top-down (y=0 at top), so we write rows in reverse order.
+    //
+    // Additionally, some RLE files have SKIP_LINES opcodes that create gaps in the
+    // decoded image. To produce output similar to ImageMagick, we fill these gaps
+    // by duplicating the previous non-empty scanline.
+    std::vector<uint8_t> prev_row;
+    bool have_prev = false;
+    
     for (int y = img.header.height() - 1; y >= 0; y--) {
+        // Check if current row has content (non-background)
+        bool row_has_content = false;
         for (size_t x = 0; x < img.header.width(); x++) {
             const uint8_t* p = img.pixel(x, y);
             if (img.header.ncolors >= 3) {
-                fwrite(p, 1, 3, out);
+                if (p[0] != 0 || p[1] != 0 || p[2] != 0) {
+                    row_has_content = true;
+                    break;
+                }
             } else if (img.header.ncolors == 1) {
-                // Grayscale - replicate to RGB
-                fputc(p[0], out);
-                fputc(p[0], out);
-                fputc(p[0], out);
+                if (p[0] != 0) {
+                    row_has_content = true;
+                    break;
+                }
             }
+        }
+        
+        if (row_has_content || !have_prev) {
+            // Write actual row data
+            if (img.header.ncolors >= 3) {
+                prev_row.resize(img.header.width() * 3);
+            } else {
+                prev_row.resize(img.header.width() * 3);
+            }
+            
+            for (size_t x = 0; x < img.header.width(); x++) {
+                const uint8_t* p = img.pixel(x, y);
+                if (img.header.ncolors >= 3) {
+                    prev_row[x*3 + 0] = p[0];
+                    prev_row[x*3 + 1] = p[1];
+                    prev_row[x*3 + 2] = p[2];
+                } else if (img.header.ncolors == 1) {
+                    // Grayscale - replicate to RGB
+                    prev_row[x*3 + 0] = p[0];
+                    prev_row[x*3 + 1] = p[0];
+                    prev_row[x*3 + 2] = p[0];
+                }
+            }
+            fwrite(prev_row.data(), 1, prev_row.size(), out);
+            have_prev = true;
+        } else {
+            // Row is empty (background), duplicate previous row
+            fwrite(prev_row.data(), 1, prev_row.size(), out);
         }
     }
     
