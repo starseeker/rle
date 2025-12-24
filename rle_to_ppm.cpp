@@ -84,11 +84,7 @@ int main(int argc, char** argv) {
         
         if (row_has_content || !have_prev) {
             // Write actual row data
-            if (img.header.ncolors >= 3) {
-                prev_row.resize(img.header.width() * 3);
-            } else {
-                prev_row.resize(img.header.width() * 3);
-            }
+            prev_row.resize(img.header.width() * 3);
             
             for (size_t x = 0; x < img.header.width(); x++) {
                 const uint8_t* p = img.pixel(x, y);

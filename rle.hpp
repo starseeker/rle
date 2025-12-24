@@ -603,17 +603,11 @@ public:
                     int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
                     // Detect scanline transition: we've finished the previous scanline when
                     // we've processed all RGB channels (0, 1, 2) and now start a new scanline.
-                    // For RGBA images with alpha-first ordering (3,0,1,2), increment when
-                    // going from channel 2 back to channel 0 or 3.
-                    // For RGB images (0,1,2), increment when going from channel 2 to channel 0.
+                    // Increment when we've finished the last RGB channel (channel 2) and
+                    // are starting the first channel of the next scanline (channel 0 or alpha).
                     bool starting_new_scanline = false;
-                    if (h.has_alpha()) {
-                        // RGBA: increment when we've finished RGB (channel 2) and start alpha (channel 3) or R (channel 0)
-                        starting_new_scanline = (current_channel == 2 || current_channel == int(h.ncolors) - 1) &&
-                                                (new_channel == 0 || new_channel == int(h.ncolors));
-                    } else {
-                        // RGB: increment when we've finished B (channel 2) and start R (channel 0)
-                        starting_new_scanline = (current_channel == int(h.ncolors) - 1) && (new_channel == 0);
+                    if (current_channel == 2 && (new_channel == 0 || (h.has_alpha() && new_channel == int(h.ncolors)))) {
+                        starting_new_scanline = true;
                     }
                     if (starting_new_scanline) {
                         ++scan_y;
