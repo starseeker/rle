@@ -161,3 +161,29 @@ echo "  ✓ Suitable for general image viewing/conversion"
 echo
 echo "See IMAGEMAGICK_COMPARISON_TEST.md for detailed analysis."
 echo
+
+# Test 3: All other RLE files
+echo
+echo -e "${YELLOW}Test 3: Testing all other RLE files${NC}"
+echo "---------------------------------------------------------------"
+
+for rle in imgs/dart.rle imgs/christmas_ball.rle imgs/tack_w_shadow.rle; do
+    name=$(basename "$rle" .rle)
+    echo -e "${YELLOW}  $name.rle:${NC}"
+    
+    ./build/rle_to_ppm "$rle" "$OUTDIR/${name}_ours.ppm" 2>&1 | sed 's/^/    /'
+    
+    if convert "$rle" -depth 8 "$OUTDIR/${name}_im.ppm" 2>/dev/null; then
+        if cmp -s "$OUTDIR/${name}_ours.ppm" "$OUTDIR/${name}_im.ppm"; then
+            echo -e "    ${GREEN}✓ Matches our decoder!${NC}"
+        else
+            echo -e "    ${RED}✗ Differs from our decoder${NC}"
+        fi
+    else
+        echo -e "    ${RED}✗ ImageMagick failed${NC}"
+    fi
+done
+
+echo
+echo "All tests complete. Generated files are in: $OUTDIR"
+echo
