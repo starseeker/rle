@@ -55,7 +55,9 @@ int main(int argc, char** argv) {
     fprintf(out, "P6\n%u %u\n255\n", img.header.width(), img.header.height());
     
     // Write pixel data (RGB only, ignore alpha if present)
-    for (size_t y = 0; y < img.header.height(); y++) {
+    // Note: RLE format uses bottom-up scanlines (y=0 at bottom), 
+    // but PPM expects top-down (y=0 at top), so we write rows in reverse order
+    for (int y = img.header.height() - 1; y >= 0; y--) {
         for (size_t x = 0; x < img.header.width(); x++) {
             const uint8_t* p = img.pixel(x, y);
             if (img.header.ncolors >= 3) {
