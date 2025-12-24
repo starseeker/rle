@@ -555,6 +555,12 @@ public:
                 }
             }
             ++rle_y;
+            
+            // After completing a scanline, write SkipLines(1) to advance to the next scanline
+            // (unless this was the last scanline, or we already skipped lines due to background)
+            if (rle_y < H) {
+                if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, 1)) { err = Error::INTERNAL_ERROR; return false; }
+            }
         }
 
         if (!write_u8(f, OPC_EOF) || !write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
