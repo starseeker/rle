@@ -601,9 +601,15 @@ public:
                     if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
                     uint16_t ch = op1;
                     int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
-                    // If we're moving to channel 0 after having processed other channels,
-                    // it means we've finished the previous scanline
-                    if (new_channel == 0 && current_channel >= 0) {
+                    // Detect scanline transition: we've finished the previous scanline when
+                    // we've processed all RGB channels (0, 1, 2) and now start a new scanline.
+                    // Increment when we've finished the last RGB channel (channel 2) and
+                    // are starting the first channel of the next scanline (channel 0 or alpha).
+                    bool starting_new_scanline = false;
+                    if (current_channel == 2 && (new_channel == 0 || (h.has_alpha() && new_channel == int(h.ncolors)))) {
+                        starting_new_scanline = true;
+                    }
+                    if (starting_new_scanline) {
                         ++scan_y;
                     }
                     current_channel = new_channel;
