@@ -466,12 +466,21 @@ public:
         const uint32_t H = h.height();
         const uint8_t chans = h.channels();
 
-        uint32_t y = 0;
-        while (y < H) {
-            if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, y)) {
-                uint32_t start = y;
-                while (y < H && row_is_background(img, y) && (y - start) < 65535) ++y;
-                uint32_t skipCount = y - start;
+        // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
+        // Image buffer uses top-down coordinates (buffer_y=0 at top).
+        // Conversion: buffer_y = (H - 1) - rle_y
+        uint32_t rle_y = 0;
+        while (rle_y < H) {
+            uint32_t buffer_y = (H - 1) - rle_y;
+            
+            if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
+                uint32_t start = rle_y;
+                while (rle_y < H) {
+                    buffer_y = (H - 1) - rle_y;
+                    if (!row_is_background(img, buffer_y) || (rle_y - start) >= 65535) break;
+                    ++rle_y;
+                }
+                uint32_t skipCount = rle_y - start;
                 if (skipCount <= 255) {
                     if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, uint8_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
                 } else {
@@ -489,9 +498,9 @@ public:
                 while (x < W) {
                     if (++opsThisRow > uint64_t(MAX_OPS_PER_ROW_FACTOR) * W) { err = Error::OP_COUNT_EXCEEDED; return false; }
 
-                    if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, y)) {
+                    if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, buffer_y)) {
                         uint32_t start = x;
-                        while (x < W && pixel_is_background(img, x, y) && (x - start) < 65535) ++x;
+                        while (x < W && pixel_is_background(img, x, buffer_y) && (x - start) < 65535) ++x;
                         uint32_t span = x - start;
                         if (span >= 2) {
                             if (span <= 255) {
@@ -505,9 +514,9 @@ public:
                         }
                     }
 
-                    uint8_t v = img.pixel(x, y)[c];
+                    uint8_t v = img.pixel(x, buffer_y)[c];
                     uint32_t run_len = 1;
-                    while (x + run_len < W && img.pixel(x + run_len, y)[c] == v && run_len < 65535) ++run_len;
+                    while (x + run_len < W && img.pixel(x + run_len, buffer_y)[c] == v && run_len < 65535) ++run_len;
                     if (run_len >= 3) {
                         uint32_t encoded = run_len - 1;
                         if (encoded <= 255) {
@@ -523,9 +532,9 @@ public:
                     std::vector<uint8_t> lit;
                     lit.reserve(256);
                     while (x < W) {
-                        uint8_t pv = img.pixel(x, y)[c];
+                        uint8_t pv = img.pixel(x, buffer_y)[c];
                         uint32_t look = 1;
-                        while (x + look < W && img.pixel(x + look, y)[c] == pv && look < 3) ++look;
+                        while (x + look < W && img.pixel(x + look, buffer_y)[c] == pv && look < 3) ++look;
                         if (look >= 3) break;
                         lit.push_back(pv);
                         ++x;
@@ -545,7 +554,7 @@ public:
                         if (!write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
                 }
             }
-            ++y;
+            ++rle_y;
         }
 
         if (!write_u8(f, OPC_EOF) || !write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
@@ -592,26 +601,15 @@ public:
                     uint16_t lines;
                     if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
                     else lines = op1;
-                    // If we were in the middle of a scanline, complete it first
-                    if (current_channel >= 0) ++scan_y;
-                    scan_y += lines; scan_x = xmin; current_channel = -1;
+                    scan_y += lines; 
+                    scan_x = xmin; 
+                    current_channel = -1;
                     continue;
                 }
                 case OPC_SET_COLOR: {
                     if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
                     uint16_t ch = op1;
                     int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
-                    // Detect scanline transition: we've finished the previous scanline when
-                    // we've processed all RGB channels (0, 1, 2) and now start a new scanline.
-                    // Increment when we've finished the last RGB channel (channel 2) and
-                    // are starting the first channel of the next scanline (channel 0 or alpha).
-                    bool starting_new_scanline = false;
-                    if (current_channel == 2 && (new_channel == 0 || (h.has_alpha() && new_channel == int(h.ncolors)))) {
-                        starting_new_scanline = true;
-                    }
-                    if (starting_new_scanline) {
-                        ++scan_y;
-                    }
                     current_channel = new_channel;
                     scan_x = xmin;
                 } break;
@@ -632,8 +630,11 @@ public:
                     for (uint32_t i = 0; i < to_write; ++i) {
                         uint8_t pv;
                         if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-                        if (current_channel >= 0 && current_channel < int(chans))
-                            img.pixel(scan_x - xmin, scan_y - ymin)[current_channel] = pv;
+                        if (current_channel >= 0 && current_channel < int(chans)) {
+                            // Convert from RLE's bottom-up y to buffer's top-down y
+                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+                        }
                         ++scan_x;
                     }
                     for (uint32_t i = 0; i < to_discard; ++i) {
@@ -655,8 +656,11 @@ public:
                     uint32_t to_write = (run_len < remaining) ? run_len : remaining;
                     uint32_t to_skip = run_len - to_write;
                     for (uint32_t i = 0; i < to_write; ++i) {
-                        if (current_channel >= 0 && current_channel < int(chans))
-                            img.pixel(scan_x - xmin, scan_y - ymin)[current_channel] = pv;
+                        if (current_channel >= 0 && current_channel < int(chans)) {
+                            // Convert from RLE's bottom-up y to buffer's top-down y
+                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+                        }
                         ++scan_x;
                     }
                     scan_x += to_skip;
