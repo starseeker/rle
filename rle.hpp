@@ -14,6 +14,13 @@
  *   - SkipLines / SkipPixels operands are direct counts (no +1).
  *   - SetColor operand 255 selects alpha channel (logical -1).
  *
+ * CRITICAL COORDINATE SYSTEM DETAIL (not explicit in original spec):
+ *   - RLE uses bottom-up coordinates: y=0 is at BOTTOM of image
+ *   - Decoders must convert to top-down buffer coords: buffer_y = (H-1) - scan_y
+ *   - Encoders must emit SkipLines(1) after each scanline to advance scan_y
+ *   - Without explicit SkipLines, all channel data writes to same y coordinate
+ *   - This behavior matches ImageMagick and Utah RLE reference implementations
+ *
  * HARDENING:
  *   - Dimension, pixel count, colormap, comment length, and allocation caps.
  *   - Overflow-safe multiplication and allocation checks.
@@ -466,12 +473,39 @@ public:
         const uint32_t H = h.height();
         const uint8_t chans = h.channels();
 
-        uint32_t y = 0;
-        while (y < H) {
-            if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, y)) {
-                uint32_t start = y;
-                while (y < H && row_is_background(img, y) && (y - start) < 65535) ++y;
-                uint32_t skipCount = y - start;
+        /* ENCODER COORDINATE SYSTEM AND SCANLINE ADVANCEMENT:
+         * 
+         * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
+         * This is implicit in the spec but critical for correct operation.
+         * 
+         * Coordinate conversion (matches decoder's inverse):
+         * - rle_y: RLE logical scanline (0 = bottom of image per spec)
+         * - buffer_y: Memory buffer row (0 = top, standard row-major order)
+         * - Conversion: buffer_y = (H - 1) - rle_y
+         * 
+         * After writing all channels for a scanline, we emit SkipLines(1) to advance
+         * to the next RLE scanline. Without this, the decoder would write the next
+         * scanline's data to the same y coordinate.
+         * 
+         * This matches ImageMagick's behavior and is required by the format, though
+         * not explicitly documented in the original Utah RLE specification.
+         */
+        // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
+        // Image buffer uses top-down coordinates (buffer_y=0 at top).
+        // Conversion: buffer_y = (H - 1) - rle_y
+        uint32_t rle_y = 0;
+        while (rle_y < H) {
+            uint32_t buffer_y = (H - 1) - rle_y;
+            
+            if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
+                uint32_t start = rle_y;
+                ++rle_y;  // Start counting from next scanline
+                buffer_y = (H - 1) - rle_y;
+                while (rle_y < H && row_is_background(img, buffer_y) && (rle_y - start) < 65535) {
+                    ++rle_y;
+                    buffer_y = (H - 1) - rle_y;
+                }
+                uint32_t skipCount = rle_y - start;
                 if (skipCount <= 255) {
                     if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, uint8_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
                 } else {
@@ -489,9 +523,9 @@ public:
                 while (x < W) {
                     if (++opsThisRow > uint64_t(MAX_OPS_PER_ROW_FACTOR) * W) { err = Error::OP_COUNT_EXCEEDED; return false; }
 
-                    if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, y)) {
+                    if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, buffer_y)) {
                         uint32_t start = x;
-                        while (x < W && pixel_is_background(img, x, y) && (x - start) < 65535) ++x;
+                        while (x < W && pixel_is_background(img, x, buffer_y) && (x - start) < 65535) ++x;
                         uint32_t span = x - start;
                         if (span >= 2) {
                             if (span <= 255) {
@@ -505,9 +539,9 @@ public:
                         }
                     }
 
-                    uint8_t v = img.pixel(x, y)[c];
+                    uint8_t v = img.pixel(x, buffer_y)[c];
                     uint32_t run_len = 1;
-                    while (x + run_len < W && img.pixel(x + run_len, y)[c] == v && run_len < 65535) ++run_len;
+                    while (x + run_len < W && img.pixel(x + run_len, buffer_y)[c] == v && run_len < 65535) ++run_len;
                     if (run_len >= 3) {
                         uint32_t encoded = run_len - 1;
                         if (encoded <= 255) {
@@ -523,9 +557,9 @@ public:
                     std::vector<uint8_t> lit;
                     lit.reserve(256);
                     while (x < W) {
-                        uint8_t pv = img.pixel(x, y)[c];
+                        uint8_t pv = img.pixel(x, buffer_y)[c];
                         uint32_t look = 1;
-                        while (x + look < W && img.pixel(x + look, y)[c] == pv && look < 3) ++look;
+                        while (x + look < W && img.pixel(x + look, buffer_y)[c] == pv && look < 3) ++look;
                         if (look >= 3) break;
                         lit.push_back(pv);
                         ++x;
@@ -545,7 +579,13 @@ public:
                         if (!write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
                 }
             }
-            ++y;
+            ++rle_y;
+            
+            // After completing a scanline, write SkipLines(1) to advance to the next scanline
+            // (unless this was the last scanline, or we already skipped lines due to background)
+            if (rle_y < H) {
+                if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, 1)) { err = Error::INTERNAL_ERROR; return false; }
+            }
         }
 
         if (!write_u8(f, OPC_EOF) || !write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
@@ -576,6 +616,34 @@ public:
         const uint32_t ymin = h.ypos;
         const uint8_t  chans = h.channels();
 
+        /* COORDINATE SYSTEM CLARIFICATION:
+         * 
+         * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
+         * This caused confusion in the original implementation:
+         * 
+         * ORIGINAL (WRONG) INTERPRETATION:
+         * - Decoder stored pixels directly at scan_y (bottom-up storage)
+         * - Assumed output tools would flip the image when displaying
+         * - Result: Image data stored upside-down in memory
+         * 
+         * CORRECT INTERPRETATION (matching ImageMagick/Utah RLE reference):
+         * - scan_y tracks RLE's logical scanline number (0 = bottom)
+         * - Decoder CONVERTS to standard top-down buffer coordinates during write
+         * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
+         * - Result: Image stored right-side-up in standard row-major format
+         * 
+         * This is evident in ImageMagick rle.c line 444:
+         *   offset = ((image->rows - y - 1) * image->columns * number_planes) + ...
+         * where 'y' is the RLE scanline (0=bottom) and (rows-y-1) converts to buffer row.
+         * 
+         * SCANLINE ADVANCEMENT:
+         * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
+         * to advance scanlines. The decoder's scan_y only increments via SkipLines, NOT
+         * implicitly when channels complete. This means:
+         * - Channels can be written in any order within a scanline
+         * - Moving to the next scanline requires an explicit SkipLines(1) opcode
+         * - Without SkipLines, all data goes to the same scanline (y coordinate)
+         */
         uint32_t scan_y = ymin;
         int current_channel = -1;
         uint32_t scan_x = xmin;
@@ -592,26 +660,15 @@ public:
                     uint16_t lines;
                     if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
                     else lines = op1;
-                    // If we were in the middle of a scanline, complete it first
-                    if (current_channel >= 0) ++scan_y;
-                    scan_y += lines; scan_x = xmin; current_channel = -1;
+                    scan_y += lines; 
+                    scan_x = xmin; 
+                    current_channel = -1;
                     continue;
                 }
                 case OPC_SET_COLOR: {
                     if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
                     uint16_t ch = op1;
                     int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
-                    // Detect scanline transition: we've finished the previous scanline when
-                    // we've processed all RGB channels (0, 1, 2) and now start a new scanline.
-                    // Increment when we've finished the last RGB channel (channel 2) and
-                    // are starting the first channel of the next scanline (channel 0 or alpha).
-                    bool starting_new_scanline = false;
-                    if (current_channel == 2 && (new_channel == 0 || (h.has_alpha() && new_channel == int(h.ncolors)))) {
-                        starting_new_scanline = true;
-                    }
-                    if (starting_new_scanline) {
-                        ++scan_y;
-                    }
                     current_channel = new_channel;
                     scan_x = xmin;
                 } break;
@@ -632,8 +689,11 @@ public:
                     for (uint32_t i = 0; i < to_write; ++i) {
                         uint8_t pv;
                         if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-                        if (current_channel >= 0 && current_channel < int(chans))
-                            img.pixel(scan_x - xmin, scan_y - ymin)[current_channel] = pv;
+                        if (current_channel >= 0 && current_channel < int(chans)) {
+                            // Convert from RLE's bottom-up y to buffer's top-down y
+                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+                        }
                         ++scan_x;
                     }
                     for (uint32_t i = 0; i < to_discard; ++i) {
@@ -655,8 +715,11 @@ public:
                     uint32_t to_write = (run_len < remaining) ? run_len : remaining;
                     uint32_t to_skip = run_len - to_write;
                     for (uint32_t i = 0; i < to_write; ++i) {
-                        if (current_channel >= 0 && current_channel < int(chans))
-                            img.pixel(scan_x - xmin, scan_y - ymin)[current_channel] = pv;
+                        if (current_channel >= 0 && current_channel < int(chans)) {
+                            // Convert from RLE's bottom-up y to buffer's top-down y
+                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+                        }
                         ++scan_x;
                     }
                     scan_x += to_skip;
