@@ -16,7 +16,9 @@
  *
  * CRITICAL COORDINATE SYSTEM DETAIL (not explicit in original spec):
  *   - RLE uses bottom-up coordinates: y=0 is at BOTTOM of image
- *   - Decoders must convert to top-down buffer coords: buffer_y = (H-1) - scan_y
+ *   - Encoders and decoders work directly in RLE's bottom-up coordinate system
+ *   - Image buffers are expected to be in bottom-up order (buffer[0] = bottom row)
+ *   - Tools (like rle_to_ppm) must handle coordinate conversion for their formats
  *   - Encoders must emit SkipLines(1) after each scanline to advance scan_y
  *   - Without explicit SkipLines, all channel data writes to same y coordinate
  *   - This behavior matches ImageMagick and Utah RLE reference implementations
@@ -478,32 +480,34 @@ class Encoder {
 	     * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
 	     * This is implicit in the spec but critical for correct operation.
 	     * 
-	     * Coordinate conversion (matches decoder's inverse):
+	     * The encoder writes scanlines directly using RLE's bottom-up coordinate system:
 	     * - rle_y: RLE logical scanline (0 = bottom of image per spec)
-	     * - buffer_y: Memory buffer row (0 = top, standard row-major order)
-	     * - Conversion: buffer_y = (H - 1) - rle_y
+	     * - buffer_y: Memory buffer row (also 0 = bottom, matching RLE coordinates)
+	     * - No coordinate conversion: buffer_y = rle_y
+	     * 
+	     * Image buffers are expected to be in RLE's native bottom-up coordinate system.
+	     * Tools like rle_to_ppm should handle coordinate conversion for their output formats.
 	     * 
 	     * After writing all channels for a scanline, we emit SkipLines(1) to advance
 	     * to the next RLE scanline. Without this, the decoder would write the next
 	     * scanline's data to the same y coordinate.
 	     * 
-	     * This matches ImageMagick's behavior and is required by the format, though
-	     * not explicitly documented in the original Utah RLE specification.
+	     * This is required by the format, though not explicitly documented in the
+	     * original Utah RLE specification.
 	     */
 	    // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
-	    // Image buffer uses top-down coordinates (buffer_y=0 at top).
-	    // Conversion: buffer_y = (H - 1) - rle_y
+	    // Image buffer is also in bottom-up coordinates (buffer_y=0 at bottom).
 	    uint32_t rle_y = 0;
 	    while (rle_y < H) {
-		uint32_t buffer_y = (H - 1) - rle_y;
+		uint32_t buffer_y = rle_y;
 
 		if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
 		    uint32_t start = rle_y;
 		    ++rle_y;  // Start counting from next scanline
-		    buffer_y = (H - 1) - rle_y;
+		    buffer_y = rle_y;
 		    while (rle_y < H && row_is_background(img, buffer_y) && (rle_y - start) < 65535) {
 			++rle_y;
-			buffer_y = (H - 1) - rle_y;
+			buffer_y = rle_y;
 		    }
 		    uint32_t skipCount = rle_y - start;
 		    if (skipCount <= 255) {
@@ -619,11 +623,14 @@ class Decoder {
 	    /* COORDINATE SYSTEM CLARIFICATION:
 	     * 
 	     * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
-	     * To match the existing ImageMagick/Utah RLE behavior when bringing data into memory:
+	     * The decoder works directly in RLE's native bottom-up coordinate system:
 	     * - scan_y tracks RLE's logical scanline number (0 = bottom)
-	     * - Decoder CONVERTS to standard top-down buffer coordinates during write
-	     * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
-	     * - Result: Image stored right-side-up in standard row-major format
+	     * - Decoder writes directly to buffer using scan_y (no coordinate conversion)
+	     * - buffer_y = scan_y - ymin
+	     * - Result: Image stored in bottom-up order (buffer[0] = bottom row)
+	     * 
+	     * Tools like rle_to_ppm are responsible for handling coordinate conversion
+	     * when writing to formats that use top-down coordinates (like PPM).
 	     * 
 	     * SCANLINE ADVANCEMENT:
 	     * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
@@ -679,8 +686,8 @@ class Decoder {
 						uint8_t pv;
 						if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
 						if (current_channel >= 0 && current_channel < int(chans)) {
-						    // Convert from RLE's bottom-up y to buffer's top-down y
-						    uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+						    // Write directly using RLE's bottom-up y coordinates
+						    uint32_t buffer_y = scan_y - ymin;
 						    img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
 						}
 						++scan_x;
@@ -705,8 +712,8 @@ class Decoder {
 					   uint32_t to_skip = run_len - to_write;
 					   for (uint32_t i = 0; i < to_write; ++i) {
 					       if (current_channel >= 0 && current_channel < int(chans)) {
-						   // Convert from RLE's bottom-up y to buffer's top-down y
-						   uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+						   // Write directly using RLE's bottom-up y coordinates
+						   uint32_t buffer_y = scan_y - ymin;
 						   img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
 					       }
 					       ++scan_x;
