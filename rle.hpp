@@ -475,28 +475,10 @@ class Encoder {
 	    const uint32_t H = h.height();
 	    const uint8_t chans = h.channels();
 
-	    /* ENCODER COORDINATE SYSTEM AND SCANLINE ADVANCEMENT:
-	     * 
-	     * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
-	     * This is implicit in the spec but critical for correct operation.
-	     * 
-	     * The encoder writes scanlines directly using RLE's bottom-up coordinate system:
-	     * - rle_y: RLE logical scanline (0 = bottom of image per spec)
-	     * - buffer_y: Memory buffer row (also 0 = bottom, matching RLE coordinates)
-	     * - No coordinate conversion: buffer_y = rle_y
-	     * 
-	     * Image buffers are expected to be in RLE's native bottom-up coordinate system.
-	     * Tools like rle_to_ppm should handle coordinate conversion for their output formats.
-	     * 
-	     * After writing all channels for a scanline, we emit SkipLines(1) to advance
-	     * to the next RLE scanline. Without this, the decoder would write the next
-	     * scanline's data to the same y coordinate.
-	     * 
-	     * This is required by the format, though not explicitly documented in the
-	     * original Utah RLE specification.
-	     */
-	    // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
-	    // Image buffer is also in bottom-up coordinates (buffer_y=0 at bottom).
+	    /* Encoder coordinate system: RLE uses bottom-up coordinates (y=0 at bottom).
+	     * Image buffer is in bottom-up order (buffer[0] = bottom row).
+	     * After writing all channels for a scanline, SkipLines(1) advances to next row.
+	     * Without SkipLines, decoder would write next scanline to same y coordinate. */
 	    uint32_t rle_y = 0;
 	    while (rle_y < H) {
 		uint32_t buffer_y = rle_y;
@@ -620,26 +602,9 @@ class Decoder {
 	    const uint32_t ymin = h.ypos;
 	    const uint8_t  chans = h.channels();
 
-	    /* COORDINATE SYSTEM CLARIFICATION:
-	     * 
-	     * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
-	     * The decoder works directly in RLE's native bottom-up coordinate system:
-	     * - scan_y tracks RLE's logical scanline number (0 = bottom)
-	     * - Decoder writes directly to buffer using scan_y (no coordinate conversion)
-	     * - buffer_y = scan_y - ymin
-	     * - Result: Image stored in bottom-up order (buffer[0] = bottom row)
-	     * 
-	     * Tools like rle_to_ppm are responsible for handling coordinate conversion
-	     * when writing to formats that use top-down coordinates (like PPM).
-	     * 
-	     * SCANLINE ADVANCEMENT:
-	     * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
-	     * to advance scanlines. The decoder's scan_y only increments via SkipLines, NOT
-	     * implicitly when channels complete. This means:
-	     * - Channels can be written in any order within a scanline
-	     * - Moving to the next scanline requires an explicit SkipLines(1) opcode
-	     * - Without SkipLines, all data goes to the same scanline (y coordinate)
-	     */
+	    /* Decoder coordinate system: RLE uses bottom-up coordinates (y=0 at bottom).
+	     * Decoder writes to buffer in bottom-up order (buffer[0] = bottom row).
+	     * scan_y advances only via SkipLines opcodes, not implicitly after channels. */
 	    uint32_t scan_y = ymin;
 	    int current_channel = -1;
 	    uint32_t scan_x = xmin;
@@ -686,7 +651,6 @@ class Decoder {
 						uint8_t pv;
 						if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
 						if (current_channel >= 0 && current_channel < int(chans)) {
-						    // Write directly using RLE's bottom-up y coordinates
 						    uint32_t buffer_y = scan_y - ymin;
 						    img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
 						}
@@ -712,7 +676,6 @@ class Decoder {
 					   uint32_t to_skip = run_len - to_write;
 					   for (uint32_t i = 0; i < to_write; ++i) {
 					       if (current_channel >= 0 && current_channel < int(chans)) {
-						   // Write directly using RLE's bottom-up y coordinates
 						   uint32_t buffer_y = scan_y - ymin;
 						   img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
 					       }
