@@ -56,7 +56,7 @@
 typedef enum {
     ICV_COLOR_SPACE_RGB,
     ICV_COLOR_SPACE_GRAY
-    /* Add here for format addition like CMYKA, HSV, others  */
+	/* Add here for format addition like CMYKA, HSV, others  */
 } ICV_COLOR_SPACE;
 
 typedef enum {
@@ -97,9 +97,9 @@ typedef struct icv_image icv_image_t;
 #endif
 
 #ifndef RLE_NO_EXCEPTIONS
-  #define RLE_THROW(MSG) throw std::runtime_error(MSG)
+#define RLE_THROW(MSG) throw std::runtime_error(MSG)
 #else
-  #define RLE_THROW(MSG) do { return false; } while(0)
+#define RLE_THROW(MSG) do { return false; } while(0)
 #endif
 
 namespace rle {
@@ -149,24 +149,24 @@ enum class Error {
 
 inline const char* error_string(Error e) {
     switch (e) {
-        case Error::OK: return "OK";
-        case Error::BAD_MAGIC: return "Bad magic";
-        case Error::HEADER_TRUNCATED: return "Header truncated";
-        case Error::UNSUPPORTED_ENDIAN: return "Unsupported endian";
-        case Error::DIM_TOO_LARGE: return "Dimensions exceed max";
-        case Error::PIXELS_TOO_LARGE: return "Pixel count exceeds max";
-        case Error::ALLOC_TOO_LARGE: return "Allocation exceeds cap";
-        case Error::COLORMAP_TOO_LARGE: return "Colormap exceeds cap";
-        case Error::COMMENT_TOO_LARGE: return "Comment block too large";
-        case Error::INVALID_NCOLORS: return "Invalid ncolors";
-        case Error::INVALID_PIXELBITS: return "Invalid pixelbits";
-        case Error::INVALID_BG_BLOCK: return "Invalid background block";
-        case Error::OPCODE_OVERFLOW: return "Opcode operand overflow";
-        case Error::OPCODE_UNKNOWN: return "Unknown opcode";
-        case Error::TRUNCATED_OPCODE: return "Truncated opcode data";
-        case Error::OP_COUNT_EXCEEDED: return "Opcode count per row exceeded";
-        case Error::INTERNAL_ERROR: return "Internal error";
-        default: return "Unknown";
+	case Error::OK: return "OK";
+	case Error::BAD_MAGIC: return "Bad magic";
+	case Error::HEADER_TRUNCATED: return "Header truncated";
+	case Error::UNSUPPORTED_ENDIAN: return "Unsupported endian";
+	case Error::DIM_TOO_LARGE: return "Dimensions exceed max";
+	case Error::PIXELS_TOO_LARGE: return "Pixel count exceeds max";
+	case Error::ALLOC_TOO_LARGE: return "Allocation exceeds cap";
+	case Error::COLORMAP_TOO_LARGE: return "Colormap exceeds cap";
+	case Error::COMMENT_TOO_LARGE: return "Comment block too large";
+	case Error::INVALID_NCOLORS: return "Invalid ncolors";
+	case Error::INVALID_PIXELBITS: return "Invalid pixelbits";
+	case Error::INVALID_BG_BLOCK: return "Invalid background block";
+	case Error::OPCODE_OVERFLOW: return "Opcode operand overflow";
+	case Error::OPCODE_UNKNOWN: return "Unknown opcode";
+	case Error::TRUNCATED_OPCODE: return "Truncated opcode data";
+	case Error::OP_COUNT_EXCEEDED: return "Opcode count per row exceeded";
+	case Error::INTERNAL_ERROR: return "Internal error";
+	default: return "Unknown";
     }
 }
 
@@ -183,7 +183,7 @@ inline bool read_u16(FILE* f, Endian e, uint16_t& v) {
 }
 inline bool write_u16_le(FILE* f, uint16_t v) {
     return std::fputc(int(v & 0xFF), f) != EOF &&
-           std::fputc(int((v >> 8) & 0xFF), f) != EOF;
+	std::fputc(int((v >> 8) & 0xFF), f) != EOF;
 }
 inline bool read_u8(FILE* f, uint8_t& v) {
     int c = std::fgetc(f); if (c == EOF) return false;
@@ -203,10 +203,10 @@ inline bool discard_bytes(FILE* f, uint64_t n) {
     static const size_t CHUNK = 4096;
     uint8_t buf[CHUNK];
     while (n > 0) {
-        size_t want = (n > CHUNK) ? CHUNK : size_t(n);
-        size_t got = std::fread(buf, 1, want, f);
-        if (got != want) return false;
-        n -= got;
+	size_t want = (n > CHUNK) ? CHUNK : size_t(n);
+	size_t got = std::fread(buf, 1, want, f);
+	if (got != want) return false;
+	n -= got;
     }
     return true;
 }
@@ -236,38 +236,38 @@ struct Header {
     uint8_t channels() const { return uint8_t(ncolors + (has_alpha() ? 1 : 0)); }
 
     bool validate(Error& err) const {
-        if (!xlen || !ylen || xlen > MAX_DIM || ylen > MAX_DIM) { err = Error::DIM_TOO_LARGE; return false; }
-        if (pixelbits != 8) { err = Error::INVALID_PIXELBITS; return false; }
-        if (ncolors == 0 || ncolors > 254) { err = Error::INVALID_NCOLORS; return false; }
-        if (!no_background() && background.size() != ncolors) { err = Error::INVALID_BG_BLOCK; return false; }
-        if (ncmap > 0) {
-            if (ncmap > 3 || cmaplen > 8) { err = Error::COLORMAP_TOO_LARGE; return false; }
-            uint64_t entries = uint64_t(ncmap) * (uint64_t(1) << cmaplen);
-            if (entries > MAX_COLORMAP_ENTRIES) { err = Error::COLORMAP_TOO_LARGE; return false; }
-            if (colormap.size() != entries) { err = Error::COLORMAP_TOO_LARGE; return false; }
-        }
-        uint64_t pixTotal;
-        if (!safe_mul_u64(xlen, ylen, MAX_PIXELS, pixTotal)) { err = Error::PIXELS_TOO_LARGE; return false; }
-        err = Error::OK;
-        return true;
+	if (!xlen || !ylen || xlen > MAX_DIM || ylen > MAX_DIM) { err = Error::DIM_TOO_LARGE; return false; }
+	if (pixelbits != 8) { err = Error::INVALID_PIXELBITS; return false; }
+	if (ncolors == 0 || ncolors > 254) { err = Error::INVALID_NCOLORS; return false; }
+	if (!no_background() && background.size() != ncolors) { err = Error::INVALID_BG_BLOCK; return false; }
+	if (ncmap > 0) {
+	    if (ncmap > 3 || cmaplen > 8) { err = Error::COLORMAP_TOO_LARGE; return false; }
+	    uint64_t entries = uint64_t(ncmap) * (uint64_t(1) << cmaplen);
+	    if (entries > MAX_COLORMAP_ENTRIES) { err = Error::COLORMAP_TOO_LARGE; return false; }
+	    if (colormap.size() != entries) { err = Error::COLORMAP_TOO_LARGE; return false; }
+	}
+	uint64_t pixTotal;
+	if (!safe_mul_u64(xlen, ylen, MAX_PIXELS, pixTotal)) { err = Error::PIXELS_TOO_LARGE; return false; }
+	err = Error::OK;
+	return true;
     }
 };
 
 inline std::vector<uint8_t> pack_comments(const std::vector<std::string>& comments) {
     std::vector<uint8_t> out;
     for (auto& s : comments) {
-        out.insert(out.end(), s.begin(), s.end());
-        out.push_back(0);
+	out.insert(out.end(), s.begin(), s.end());
+	out.push_back(0);
     }
     return out;
 }
 inline void unpack_comments(const std::vector<uint8_t>& block, std::vector<std::string>& out) {
     size_t i = 0;
     while (i < block.size()) {
-        std::string s;
-        while (i < block.size() && block[i] != 0) s.push_back(char(block[i++]));
-        if (i < block.size() && block[i] == 0) ++i;
-        if (!s.empty()) out.push_back(std::move(s));
+	std::string s;
+	while (i < block.size() && block[i] != 0) s.push_back(char(block[i++]));
+	if (i < block.size() && block[i] == 0) ++i;
+	if (!s.empty()) out.push_back(std::move(s));
     }
 }
 
@@ -276,34 +276,34 @@ inline bool write_header(FILE* f, const Header& h) {
     if (!h.validate(e)) RLE_THROW(error_string(e));
     if (!write_u16_le(f, RLE_MAGIC)) return false;
     if (!write_u16_le(f, h.xpos) || !write_u16_le(f, h.ypos) ||
-        !write_u16_le(f, h.xlen) || !write_u16_le(f, h.ylen)) return false;
+	    !write_u16_le(f, h.xlen) || !write_u16_le(f, h.ylen)) return false;
     if (!write_u8(f, h.flags) || !write_u8(f, h.ncolors) || !write_u8(f, h.pixelbits) ||
-        !write_u8(f, h.ncmap) || !write_u8(f, h.cmaplen)) return false;
+	    !write_u8(f, h.ncmap) || !write_u8(f, h.cmaplen)) return false;
 
     if (!h.no_background()) {
-        for (uint8_t v : h.background) if (!write_u8(f, v)) return false;
-        /* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
-         * after the background block, even when ncolors is odd. The RLE spec
-         * describes padding for comments and pixel data, but not for background. */
+	for (uint8_t v : h.background) if (!write_u8(f, v)) return false;
+	/* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
+	 * after the background block, even when ncolors is odd. The RLE spec
+	 * describes padding for comments and pixel data, but not for background. */
     } else {
-        /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
-         * a single null byte when NO_BACKGROUND flag is set, even though the
-         * format specification suggests no background data should be present.
-         * This behavior is found in utahrle/Runput.c line ~220.
-         * We replicate this for compatibility. */
-        if (!write_u8(f, 0)) return false;
+	/* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
+	 * a single null byte when NO_BACKGROUND flag is set, even though the
+	 * format specification suggests no background data should be present.
+	 * This behavior is found in utahrle/Runput.c line ~220.
+	 * We replicate this for compatibility. */
+	if (!write_u8(f, 0)) return false;
     }
     if (h.ncmap > 0) {
-        for (uint16_t cv : h.colormap)
-            if (!write_u16_le(f, cv)) return false;
+	for (uint16_t cv : h.colormap)
+	    if (!write_u16_le(f, cv)) return false;
     }
     if (h.has_comments()) {
-        auto packed = pack_comments(h.comments);
-        if (packed.size() > MAX_COMMENT_LEN) RLE_THROW("Comment block too large");
-        uint16_t clen = uint16_t(packed.size());
-        if (!write_u16_le(f, clen)) return false;
-        for (uint8_t b : packed) if (!write_u8(f, b)) return false;
-        if (clen & 0x01) if (!write_u8(f, 0)) return false;
+	auto packed = pack_comments(h.comments);
+	if (packed.size() > MAX_COMMENT_LEN) RLE_THROW("Comment block too large");
+	uint16_t clen = uint16_t(packed.size());
+	if (!write_u16_le(f, clen)) return false;
+	for (uint8_t b : packed) if (!write_u8(f, b)) return false;
+	if (clen & 0x01) if (!write_u8(f, 0)) return false;
     }
     return true;
 }
@@ -316,59 +316,59 @@ inline bool read_header_single(FILE* f, Header& h, Endian e, Error& err) {
     if (magic != RLE_MAGIC) { err = Error::BAD_MAGIC; std::fseek(f, start, SEEK_SET); return false; }
     auto rd8 = [&](uint8_t& v)->bool { int c = std::fgetc(f); if (c == EOF) return false; v = uint8_t(c); return true; };
     if (!read_u16(f, e, h.xpos) || !read_u16(f, e, h.ypos) ||
-        !read_u16(f, e, h.xlen) || !read_u16(f, e, h.ylen) ||
-        !rd8(h.flags) || !rd8(h.ncolors) || !rd8(h.pixelbits) ||
-        !rd8(h.ncmap) || !rd8(h.cmaplen)) {
-        err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false;
+	    !read_u16(f, e, h.xlen) || !read_u16(f, e, h.ylen) ||
+	    !rd8(h.flags) || !rd8(h.ncolors) || !rd8(h.pixelbits) ||
+	    !rd8(h.ncmap) || !rd8(h.cmaplen)) {
+	err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false;
     }
     if (!(h.flags & FLAG_NO_BACKGROUND)) {
-        h.background.resize(h.ncolors);
-        for (uint8_t &v : h.background)
-            if (!rd8(v)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-        /* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
-         * after the background block, even when ncolors is odd. The RLE spec
-         * describes padding for comments and pixel data, but not for background. */
+	h.background.resize(h.ncolors);
+	for (uint8_t &v : h.background)
+	    if (!rd8(v)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	/* COMPATIBILITY: Utah RLE reference implementation does NOT write padding
+	 * after the background block, even when ncolors is odd. The RLE spec
+	 * describes padding for comments and pixel data, but not for background. */
     } else {
-        /* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
-         * a single null byte when NO_BACKGROUND flag is set, even though the
-         * format specification suggests no background data should be present.
-         * This behavior is found in utahrle/Runput.c line ~220.
-         * We must read this byte for compatibility. */
-        uint8_t null_byte;
-        if (!rd8(null_byte)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	/* COMPATIBILITY: Utah RLE reference implementation (libutahrle) writes
+	 * a single null byte when NO_BACKGROUND flag is set, even though the
+	 * format specification suggests no background data should be present.
+	 * This behavior is found in utahrle/Runput.c line ~220.
+	 * We must read this byte for compatibility. */
+	uint8_t null_byte;
+	if (!rd8(null_byte)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
     }
     if (h.ncmap > 0) {
-        if (h.ncmap > 3 || h.cmaplen > 8) { err = Error::COLORMAP_TOO_LARGE; std::fseek(f, start, SEEK_SET); return false; }
-        uint64_t entries = uint64_t(h.ncmap) * (uint64_t(1) << h.cmaplen);
-        if (entries > MAX_COLORMAP_ENTRIES) { err = Error::COLORMAP_TOO_LARGE; std::fseek(f, start, SEEK_SET); return false; }
-        h.colormap.resize(entries);
-        for (uint64_t i = 0; i < entries; ++i) {
-            uint16_t cv;
-            if (!read_u16(f, e, cv)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-            h.colormap[i] = cv;
-        }
-        uint16_t all = 0;
-        for (auto v : h.colormap) all |= v;
-        if ((all & 0xFF00) == 0 && (all & 0x00FF) != 0)
-            for (auto &v : h.colormap) v <<= 8;
+	if (h.ncmap > 3 || h.cmaplen > 8) { err = Error::COLORMAP_TOO_LARGE; std::fseek(f, start, SEEK_SET); return false; }
+	uint64_t entries = uint64_t(h.ncmap) * (uint64_t(1) << h.cmaplen);
+	if (entries > MAX_COLORMAP_ENTRIES) { err = Error::COLORMAP_TOO_LARGE; std::fseek(f, start, SEEK_SET); return false; }
+	h.colormap.resize(entries);
+	for (uint64_t i = 0; i < entries; ++i) {
+	    uint16_t cv;
+	    if (!read_u16(f, e, cv)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	    h.colormap[i] = cv;
+	}
+	uint16_t all = 0;
+	for (auto v : h.colormap) all |= v;
+	if ((all & 0xFF00) == 0 && (all & 0x00FF) != 0)
+	    for (auto &v : h.colormap) v <<= 8;
     }
     if (h.flags & FLAG_COMMENT) {
-        uint16_t clen;
-        if (!read_u16(f, e, clen)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-        /* Hardened: if comments too large, read-and-discard instead of failing */
-        if (clen > MAX_COMMENT_LEN) {
-            if (!discard_bytes(f, clen)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-            if (clen & 0x01) { uint8_t pad; if (!read_u8(f, pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; } }
-            /* Do not populate h.comments; proceed */
-        } else if (clen > 0) {
-            std::vector<uint8_t> block(clen);
-            for (uint16_t i = 0; i < clen; ++i)
-                if (!rd8(block[i])) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
-            if (clen & 0x01) { uint8_t pad; if (!rd8(pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; } }
-            unpack_comments(block, h.comments);
-        } else {
-            /* zero-length comments: still may have even padding (clen==0 => no pad) */
-        }
+	uint16_t clen;
+	if (!read_u16(f, e, clen)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	/* Hardened: if comments too large, read-and-discard instead of failing */
+	if (clen > MAX_COMMENT_LEN) {
+	    if (!discard_bytes(f, clen)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	    if (clen & 0x01) { uint8_t pad; if (!read_u8(f, pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; } }
+	    /* Do not populate h.comments; proceed */
+	} else if (clen > 0) {
+	    std::vector<uint8_t> block(clen);
+	    for (uint16_t i = 0; i < clen; ++i)
+		if (!rd8(block[i])) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; }
+	    if (clen & 0x01) { uint8_t pad; if (!rd8(pad)) { err = Error::HEADER_TRUNCATED; std::fseek(f, start, SEEK_SET); return false; } }
+	    unpack_comments(block, h.comments);
+	} else {
+	    /* zero-length comments: still may have even padding (clen==0 => no pad) */
+	}
     }
     if (!h.validate(err)) { std::fseek(f, start, SEEK_SET); return false; }
     err = Error::OK;
@@ -384,8 +384,8 @@ inline bool read_header_auto(FILE* f, Header& h, Endian& chosen, Error& err) {
     if (pos == -1L) { err = Error::INTERNAL_ERROR; return false; }
     if (read_header_single(f, h, Endian::Little, err)) { chosen = Endian::Little; return true; }
     if (err == Error::BAD_MAGIC) {
-        std::fseek(f, pos, SEEK_SET);
-        if (read_header_single(f, h, Endian::Big, err)) { chosen = Endian::Big; return true; }
+	std::fseek(f, pos, SEEK_SET);
+	if (read_header_single(f, h, Endian::Big, err)) { chosen = Endian::Big; return true; }
     }
     return false;
 #endif
@@ -396,48 +396,48 @@ struct Image {
     std::vector<uint8_t> pixels;
 
     bool allocate(Error& err) {
-        Error hv;
-        if (!header.validate(hv)) { err = hv; return false; }
-        uint64_t total;
-        if (!safe_mul_u64(header.width(), header.height(), MAX_PIXELS, total)) { err = Error::PIXELS_TOO_LARGE; return false; }
-        uint64_t bytes;
-        if (!safe_mul_u64(total, header.channels(), MAX_ALLOC_BYTES, bytes)) { err = Error::ALLOC_TOO_LARGE; return false; }
-        try {
-            pixels.assign(size_t(header.width()) * size_t(header.height()) * header.channels(), 0);
-            
-            // Initialize pixels with background color if specified
-            if (!header.no_background() && !header.background.empty()) {
-                size_t npix = size_t(header.width()) * header.height();
-                for (size_t i = 0; i < npix; ++i) {
-                    for (size_t c = 0; c < header.ncolors && c < header.background.size(); ++c) {
-                        pixels[i * header.channels() + c] = header.background[c];
-                    }
-                }
-            }
-            
-            // Initialize alpha channel to 255 (fully opaque) by default
-            if (header.has_alpha()) {
-                size_t npix = size_t(header.width()) * header.height();
-                for (size_t i = 0; i < npix; ++i) {
-                    pixels[i * header.channels() + header.ncolors] = 255;
-                }
-            }
-        } catch (...) { err = Error::ALLOC_TOO_LARGE; return false; }
-        err = Error::OK; return true;
+	Error hv;
+	if (!header.validate(hv)) { err = hv; return false; }
+	uint64_t total;
+	if (!safe_mul_u64(header.width(), header.height(), MAX_PIXELS, total)) { err = Error::PIXELS_TOO_LARGE; return false; }
+	uint64_t bytes;
+	if (!safe_mul_u64(total, header.channels(), MAX_ALLOC_BYTES, bytes)) { err = Error::ALLOC_TOO_LARGE; return false; }
+	try {
+	    pixels.assign(size_t(header.width()) * size_t(header.height()) * header.channels(), 0);
+
+	    // Initialize pixels with background color if specified
+	    if (!header.no_background() && !header.background.empty()) {
+		size_t npix = size_t(header.width()) * header.height();
+		for (size_t i = 0; i < npix; ++i) {
+		    for (size_t c = 0; c < header.ncolors && c < header.background.size(); ++c) {
+			pixels[i * header.channels() + c] = header.background[c];
+		    }
+		}
+	    }
+
+	    // Initialize alpha channel to 255 (fully opaque) by default
+	    if (header.has_alpha()) {
+		size_t npix = size_t(header.width()) * header.height();
+		for (size_t i = 0; i < npix; ++i) {
+		    pixels[i * header.channels() + header.ncolors] = 255;
+		}
+	    }
+	} catch (...) { err = Error::ALLOC_TOO_LARGE; return false; }
+	err = Error::OK; return true;
     }
 
     inline uint8_t* pixel(uint32_t x, uint32_t y) {
-        return pixels.data() + (size_t(y) * header.width() + x) * header.channels();
+	return pixels.data() + (size_t(y) * header.width() + x) * header.channels();
     }
     inline const uint8_t* pixel(uint32_t x, uint32_t y) const {
-        return pixels.data() + (size_t(y) * header.width() + x) * header.channels();
+	return pixels.data() + (size_t(y) * header.width() + x) * header.channels();
     }
 };
 
 inline bool pixel_is_background(const Image& img, uint32_t x, uint32_t y) {
     const uint8_t* p = img.pixel(x, y);
     for (uint8_t c = 0; c < img.header.ncolors; ++c) {
-        if (img.header.background.empty() || p[c] != img.header.background[c]) return false;
+	if (img.header.background.empty() || p[c] != img.header.background[c]) return false;
     }
     return true;
 }
@@ -445,152 +445,152 @@ inline bool row_is_background(const Image& img, uint32_t y) {
     const uint32_t W = img.header.width();
     const uint8_t chans = img.header.channels();
     for (uint32_t x = 0; x < W; ++x) {
-        const uint8_t* p = img.pixel(x, y);
-        for (uint8_t c = 0; c < img.header.ncolors; ++c) {
-            if (img.header.background.empty() || p[c] != img.header.background[c]) return false;
-        }
-        if (img.header.has_alpha() && p[chans - 1] != 0) return false;
+	const uint8_t* p = img.pixel(x, y);
+	for (uint8_t c = 0; c < img.header.ncolors; ++c) {
+	    if (img.header.background.empty() || p[c] != img.header.background[c]) return false;
+	}
+	if (img.header.has_alpha() && p[chans - 1] != 0) return false;
     }
     return true;
 }
 
 class Encoder {
-public:
-    enum BackgroundMode { BG_SAVE_ALL = 0, BG_OVERLAY = 1, BG_CLEAR = 2 };
+    public:
+	enum BackgroundMode { BG_SAVE_ALL = 0, BG_OVERLAY = 1, BG_CLEAR = 2 };
 
-    static bool write(FILE* f, const Image& img, BackgroundMode bg_mode, Error& err) {
-        if (!f) { err = Error::INTERNAL_ERROR; return false; }
+	static bool write(FILE* f, const Image& img, BackgroundMode bg_mode, Error& err) {
+	    if (!f) { err = Error::INTERNAL_ERROR; return false; }
 
-        Header h = img.header;
-        if (bg_mode == BG_CLEAR) h.flags |= FLAG_CLEAR_FIRST;
-        if (img.header.has_alpha()) h.flags |= FLAG_ALPHA;
-        if (!img.header.comments.empty()) h.flags |= FLAG_COMMENT;
-        if (h.background.empty()) h.flags |= FLAG_NO_BACKGROUND;
+	    Header h = img.header;
+	    if (bg_mode == BG_CLEAR) h.flags |= FLAG_CLEAR_FIRST;
+	    if (img.header.has_alpha()) h.flags |= FLAG_ALPHA;
+	    if (!img.header.comments.empty()) h.flags |= FLAG_COMMENT;
+	    if (h.background.empty()) h.flags |= FLAG_NO_BACKGROUND;
 
-        if (!write_header(f, h)) { err = Error::INTERNAL_ERROR; return false; }
+	    if (!write_header(f, h)) { err = Error::INTERNAL_ERROR; return false; }
 
-        const uint32_t W = h.width();
-        const uint32_t H = h.height();
-        const uint8_t chans = h.channels();
+	    const uint32_t W = h.width();
+	    const uint32_t H = h.height();
+	    const uint8_t chans = h.channels();
 
-        /* ENCODER COORDINATE SYSTEM AND SCANLINE ADVANCEMENT:
-         * 
-         * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
-         * This is implicit in the spec but critical for correct operation.
-         * 
-         * Coordinate conversion (matches decoder's inverse):
-         * - rle_y: RLE logical scanline (0 = bottom of image per spec)
-         * - buffer_y: Memory buffer row (0 = top, standard row-major order)
-         * - Conversion: buffer_y = (H - 1) - rle_y
-         * 
-         * After writing all channels for a scanline, we emit SkipLines(1) to advance
-         * to the next RLE scanline. Without this, the decoder would write the next
-         * scanline's data to the same y coordinate.
-         * 
-         * This matches ImageMagick's behavior and is required by the format, though
-         * not explicitly documented in the original Utah RLE specification.
-         */
-        // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
-        // Image buffer uses top-down coordinates (buffer_y=0 at top).
-        // Conversion: buffer_y = (H - 1) - rle_y
-        uint32_t rle_y = 0;
-        while (rle_y < H) {
-            uint32_t buffer_y = (H - 1) - rle_y;
-            
-            if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
-                uint32_t start = rle_y;
-                ++rle_y;  // Start counting from next scanline
-                buffer_y = (H - 1) - rle_y;
-                while (rle_y < H && row_is_background(img, buffer_y) && (rle_y - start) < 65535) {
-                    ++rle_y;
-                    buffer_y = (H - 1) - rle_y;
-                }
-                uint32_t skipCount = rle_y - start;
-                if (skipCount <= 255) {
-                    if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, uint8_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
-                } else {
-                    if (!write_u8(f, OPC_SKIP_LINES | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
-                }
-                continue;
-            }
+	    /* ENCODER COORDINATE SYSTEM AND SCANLINE ADVANCEMENT:
+	     * 
+	     * RLE format requirement: Encoders must emit SkipLines opcodes to advance scanlines.
+	     * This is implicit in the spec but critical for correct operation.
+	     * 
+	     * Coordinate conversion (matches decoder's inverse):
+	     * - rle_y: RLE logical scanline (0 = bottom of image per spec)
+	     * - buffer_y: Memory buffer row (0 = top, standard row-major order)
+	     * - Conversion: buffer_y = (H - 1) - rle_y
+	     * 
+	     * After writing all channels for a scanline, we emit SkipLines(1) to advance
+	     * to the next RLE scanline. Without this, the decoder would write the next
+	     * scanline's data to the same y coordinate.
+	     * 
+	     * This matches ImageMagick's behavior and is required by the format, though
+	     * not explicitly documented in the original Utah RLE specification.
+	     */
+	    // Encoder writes scanlines in RLE's bottom-up coordinate system (y=0 at bottom).
+	    // Image buffer uses top-down coordinates (buffer_y=0 at top).
+	    // Conversion: buffer_y = (H - 1) - rle_y
+	    uint32_t rle_y = 0;
+	    while (rle_y < H) {
+		uint32_t buffer_y = (H - 1) - rle_y;
 
-            for (uint8_t c = 0; c < chans; ++c) {
-                uint16_t operand = (c == h.ncolors && h.has_alpha()) ? 255 : c;
-                if (!write_u8(f, OPC_SET_COLOR) || !write_u8(f, uint8_t(operand))) { err = Error::INTERNAL_ERROR; return false; }
+		if (bg_mode != BG_SAVE_ALL && !h.no_background() && row_is_background(img, buffer_y)) {
+		    uint32_t start = rle_y;
+		    ++rle_y;  // Start counting from next scanline
+		    buffer_y = (H - 1) - rle_y;
+		    while (rle_y < H && row_is_background(img, buffer_y) && (rle_y - start) < 65535) {
+			++rle_y;
+			buffer_y = (H - 1) - rle_y;
+		    }
+		    uint32_t skipCount = rle_y - start;
+		    if (skipCount <= 255) {
+			if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, uint8_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
+		    } else {
+			if (!write_u8(f, OPC_SKIP_LINES | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(skipCount))) { err = Error::INTERNAL_ERROR; return false; }
+		    }
+		    continue;
+		}
 
-                uint32_t x = 0;
-                uint64_t opsThisRow = 0;
-                while (x < W) {
-                    if (++opsThisRow > uint64_t(MAX_OPS_PER_ROW_FACTOR) * W) { err = Error::OP_COUNT_EXCEEDED; return false; }
+		for (uint8_t c = 0; c < chans; ++c) {
+		    uint16_t operand = (c == h.ncolors && h.has_alpha()) ? 255 : c;
+		    if (!write_u8(f, OPC_SET_COLOR) || !write_u8(f, uint8_t(operand))) { err = Error::INTERNAL_ERROR; return false; }
 
-                    if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, buffer_y)) {
-                        uint32_t start = x;
-                        while (x < W && pixel_is_background(img, x, buffer_y) && (x - start) < 65535) ++x;
-                        uint32_t span = x - start;
-                        if (span >= 2) {
-                            if (span <= 255) {
-                                if (!write_u8(f, OPC_SKIP_PIXELS) || !write_u8(f, uint8_t(span))) { err = Error::INTERNAL_ERROR; return false; }
-                            } else {
-                                if (!write_u8(f, OPC_SKIP_PIXELS | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(span))) { err = Error::INTERNAL_ERROR; return false; }
-                            }
-                            continue;
-                        } else {
-                            x = start;
-                        }
-                    }
+		    uint32_t x = 0;
+		    uint64_t opsThisRow = 0;
+		    while (x < W) {
+			if (++opsThisRow > uint64_t(MAX_OPS_PER_ROW_FACTOR) * W) { err = Error::OP_COUNT_EXCEEDED; return false; }
 
-                    uint8_t v = img.pixel(x, buffer_y)[c];
-                    uint32_t run_len = 1;
-                    while (x + run_len < W && img.pixel(x + run_len, buffer_y)[c] == v && run_len < 65535) ++run_len;
-                    if (run_len >= 3) {
-                        uint32_t encoded = run_len - 1;
-                        if (encoded <= 255) {
-                            if (!write_u8(f, OPC_RUN_DATA) || !write_u8(f, uint8_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
-                        } else {
-                            if (!write_u8(f, OPC_RUN_DATA | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
-                        }
-                        if (!write_u16_le(f, uint16_t(v))) { err = Error::INTERNAL_ERROR; return false; }
-                        x += run_len;
-                        continue;
-                    }
+			if (bg_mode != BG_SAVE_ALL && c < h.ncolors && pixel_is_background(img, x, buffer_y)) {
+			    uint32_t start = x;
+			    while (x < W && pixel_is_background(img, x, buffer_y) && (x - start) < 65535) ++x;
+			    uint32_t span = x - start;
+			    if (span >= 2) {
+				if (span <= 255) {
+				    if (!write_u8(f, OPC_SKIP_PIXELS) || !write_u8(f, uint8_t(span))) { err = Error::INTERNAL_ERROR; return false; }
+				} else {
+				    if (!write_u8(f, OPC_SKIP_PIXELS | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(span))) { err = Error::INTERNAL_ERROR; return false; }
+				}
+				continue;
+			    } else {
+				x = start;
+			    }
+			}
 
-                    std::vector<uint8_t> lit;
-                    lit.reserve(256);
-                    while (x < W) {
-                        uint8_t pv = img.pixel(x, buffer_y)[c];
-                        uint32_t look = 1;
-                        while (x + look < W && img.pixel(x + look, buffer_y)[c] == pv && look < 3) ++look;
-                        if (look >= 3) break;
-                        lit.push_back(pv);
-                        ++x;
-                        if (lit.size() == 256) break;
-                    }
-                    if (lit.empty()) continue;
-                    uint32_t count = uint32_t(lit.size());
-                    uint32_t encoded = count - 1;
-                    if (encoded <= 255) {
-                        if (!write_u8(f, OPC_BYTE_DATA) || !write_u8(f, uint8_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
-                    } else {
-                        if (!write_u8(f, OPC_BYTE_DATA | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
-                    }
-                    for (uint8_t pv : lit)
-                        if (!write_u8(f, pv)) { err = Error::INTERNAL_ERROR; return false; }
-                    if (count & 1)
-                        if (!write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
-                }
-            }
-            ++rle_y;
-            
-            // After completing a scanline, write SkipLines(1) to advance to the next scanline
-            // (unless this was the last scanline, or we already skipped lines due to background)
-            if (rle_y < H) {
-                if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, 1)) { err = Error::INTERNAL_ERROR; return false; }
-            }
-        }
+			uint8_t v = img.pixel(x, buffer_y)[c];
+			uint32_t run_len = 1;
+			while (x + run_len < W && img.pixel(x + run_len, buffer_y)[c] == v && run_len < 65535) ++run_len;
+			if (run_len >= 3) {
+			    uint32_t encoded = run_len - 1;
+			    if (encoded <= 255) {
+				if (!write_u8(f, OPC_RUN_DATA) || !write_u8(f, uint8_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
+			    } else {
+				if (!write_u8(f, OPC_RUN_DATA | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
+			    }
+			    if (!write_u16_le(f, uint16_t(v))) { err = Error::INTERNAL_ERROR; return false; }
+			    x += run_len;
+			    continue;
+			}
 
-        if (!write_u8(f, OPC_EOF) || !write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
-        err = Error::OK; return true;
-    }
+			std::vector<uint8_t> lit;
+			lit.reserve(256);
+			while (x < W) {
+			    uint8_t pv = img.pixel(x, buffer_y)[c];
+			    uint32_t look = 1;
+			    while (x + look < W && img.pixel(x + look, buffer_y)[c] == pv && look < 3) ++look;
+			    if (look >= 3) break;
+			    lit.push_back(pv);
+			    ++x;
+			    if (lit.size() == 256) break;
+			}
+			if (lit.empty()) continue;
+			uint32_t count = uint32_t(lit.size());
+			uint32_t encoded = count - 1;
+			if (encoded <= 255) {
+			    if (!write_u8(f, OPC_BYTE_DATA) || !write_u8(f, uint8_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
+			} else {
+			    if (!write_u8(f, OPC_BYTE_DATA | OPC_LONG_FLAG) || !write_u8(f, 0) || !write_u16_le(f, uint16_t(encoded))) { err = Error::INTERNAL_ERROR; return false; }
+			}
+			for (uint8_t pv : lit)
+			    if (!write_u8(f, pv)) { err = Error::INTERNAL_ERROR; return false; }
+			if (count & 1)
+			    if (!write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
+		    }
+		}
+		++rle_y;
+
+		// After completing a scanline, write SkipLines(1) to advance to the next scanline
+		// (unless this was the last scanline, or we already skipped lines due to background)
+		if (rle_y < H) {
+		    if (!write_u8(f, OPC_SKIP_LINES) || !write_u8(f, 1)) { err = Error::INTERNAL_ERROR; return false; }
+		}
+	    }
+
+	    if (!write_u8(f, OPC_EOF) || !write_u8(f, 0)) { err = Error::INTERNAL_ERROR; return false; }
+	    err = Error::OK; return true;
+	}
 };
 
 struct DecoderResult {
@@ -600,194 +600,194 @@ struct DecoderResult {
 };
 
 class Decoder {
-public:
-    static DecoderResult read(FILE* f, Image& img) {
-        DecoderResult res;
-        if (!f) { res.error = Error::INTERNAL_ERROR; return res; }
-        Header h; Endian e; Error herr;
-        if (!read_header_auto(f, h, e, herr)) { res.error = herr; return res; }
-        img.header = h;
-        Error aerr;
-        if (!img.allocate(aerr)) { res.error = aerr; return res; }
+    public:
+	static DecoderResult read(FILE* f, Image& img) {
+	    DecoderResult res;
+	    if (!f) { res.error = Error::INTERNAL_ERROR; return res; }
+	    Header h; Endian e; Error herr;
+	    if (!read_header_auto(f, h, e, herr)) { res.error = herr; return res; }
+	    img.header = h;
+	    Error aerr;
+	    if (!img.allocate(aerr)) { res.error = aerr; return res; }
 
-        const uint32_t W = h.width();
-        const uint32_t H = h.height();
-        const uint32_t xmin = h.xpos;
-        const uint32_t ymin = h.ypos;
-        const uint8_t  chans = h.channels();
+	    const uint32_t W = h.width();
+	    const uint32_t H = h.height();
+	    const uint32_t xmin = h.xpos;
+	    const uint32_t ymin = h.ypos;
+	    const uint8_t  chans = h.channels();
 
-        /* COORDINATE SYSTEM CLARIFICATION:
-         * 
-         * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
-         * This caused confusion in the original implementation:
-         * 
-         * ORIGINAL (WRONG) INTERPRETATION:
-         * - Decoder stored pixels directly at scan_y (bottom-up storage)
-         * - Assumed output tools would flip the image when displaying
-         * - Result: Image data stored upside-down in memory
-         * 
-         * CORRECT INTERPRETATION (matching ImageMagick/Utah RLE reference):
-         * - scan_y tracks RLE's logical scanline number (0 = bottom)
-         * - Decoder CONVERTS to standard top-down buffer coordinates during write
-         * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
-         * - Result: Image stored right-side-up in standard row-major format
-         * 
-         * This is evident in ImageMagick rle.c line 444:
-         *   offset = ((image->rows - y - 1) * image->columns * number_planes) + ...
-         * where 'y' is the RLE scanline (0=bottom) and (rows-y-1) converts to buffer row.
-         * 
-         * SCANLINE ADVANCEMENT:
-         * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
-         * to advance scanlines. The decoder's scan_y only increments via SkipLines, NOT
-         * implicitly when channels complete. This means:
-         * - Channels can be written in any order within a scanline
-         * - Moving to the next scanline requires an explicit SkipLines(1) opcode
-         * - Without SkipLines, all data goes to the same scanline (y coordinate)
-         */
-        uint32_t scan_y = ymin;
-        int current_channel = -1;
-        uint32_t scan_x = xmin;
+	    /* COORDINATE SYSTEM CLARIFICATION:
+	     * 
+	     * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
+	     * This caused confusion in the original implementation:
+	     * 
+	     * ORIGINAL (WRONG) INTERPRETATION:
+	     * - Decoder stored pixels directly at scan_y (bottom-up storage)
+	     * - Assumed output tools would flip the image when displaying
+	     * - Result: Image data stored upside-down in memory
+	     * 
+	     * CORRECT INTERPRETATION (matching ImageMagick/Utah RLE reference):
+	     * - scan_y tracks RLE's logical scanline number (0 = bottom)
+	     * - Decoder CONVERTS to standard top-down buffer coordinates during write
+	     * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
+	     * - Result: Image stored right-side-up in standard row-major format
+	     * 
+	     * This is evident in ImageMagick rle.c line 444:
+	     *   offset = ((image->rows - y - 1) * image->columns * number_planes) + ...
+	     * where 'y' is the RLE scanline (0=bottom) and (rows-y-1) converts to buffer row.
+	     * 
+	     * SCANLINE ADVANCEMENT:
+	     * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
+	     * to advance scanlines. The decoder's scan_y only increments via SkipLines, NOT
+	     * implicitly when channels complete. This means:
+	     * - Channels can be written in any order within a scanline
+	     * - Moving to the next scanline requires an explicit SkipLines(1) opcode
+	     * - Without SkipLines, all data goes to the same scanline (y coordinate)
+	     */
+	    uint32_t scan_y = ymin;
+	    int current_channel = -1;
+	    uint32_t scan_x = xmin;
 
-        while (scan_y < ymin + H) {
-            uint8_t op0, op1;
-            if (!read_u8(f, op0)) break;
-            if (!read_u8(f, op1)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-            uint8_t base = op0 & ~OPC_LONG_FLAG;
-            bool longForm = (op0 & OPC_LONG_FLAG) != 0;
+	    while (scan_y < ymin + H) {
+		uint8_t op0, op1;
+		if (!read_u8(f, op0)) break;
+		if (!read_u8(f, op1)) { res.error = Error::TRUNCATED_OPCODE; return res; }
+		uint8_t base = op0 & ~OPC_LONG_FLAG;
+		bool longForm = (op0 & OPC_LONG_FLAG) != 0;
 
-            switch (base) {
-                case OPC_SKIP_LINES: {
-                    uint16_t lines;
-                    if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
-                    else lines = op1;
-                    scan_y += lines; 
-                    scan_x = xmin; 
-                    current_channel = -1;
-                    continue;
-                }
-                case OPC_SET_COLOR: {
-                    if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
-                    uint16_t ch = op1;
-                    int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
-                    current_channel = new_channel;
-                    scan_x = xmin;
-                } break;
-                case OPC_SKIP_PIXELS: {
-                    uint16_t skip;
-                    if (longForm) { if (!read_u16(f, e, skip)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
-                    else skip = op1;
-                    scan_x += skip;
-                } break;
-                case OPC_BYTE_DATA: {
-                    uint16_t enc;
-                    if (longForm) { if (!read_u16(f, e, enc)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
-                    else enc = op1;
-                    uint32_t count = uint32_t(enc) + 1;
-                    uint32_t remaining = (xmin + W > scan_x) ? (xmin + W - scan_x) : 0;
-                    uint32_t to_write = (count < remaining) ? count : remaining;
-                    uint32_t to_discard = count - to_write;
-                    for (uint32_t i = 0; i < to_write; ++i) {
-                        uint8_t pv;
-                        if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-                        if (current_channel >= 0 && current_channel < int(chans)) {
-                            // Convert from RLE's bottom-up y to buffer's top-down y
-                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
-                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
-                        }
-                        ++scan_x;
-                    }
-                    for (uint32_t i = 0; i < to_discard; ++i) {
-                        uint8_t tmp;
-                        if (!read_u8(f, tmp)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-                        ++scan_x;
-                    }
-                    if (count & 1) { uint8_t filler; if (!read_u8(f, filler)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
-                } break;
-                case OPC_RUN_DATA: {
-                    uint16_t enc;
-                    if (longForm) { if (!read_u16(f, e, enc)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
-                    else enc = op1;
-                    uint32_t run_len = uint32_t(enc) + 1;
-                    uint16_t word;
-                    if (!read_u16(f, e, word)) { res.error = Error::TRUNCATED_OPCODE; return res; }
-                    uint8_t pv = uint8_t(word & 0xFF);
-                    uint32_t remaining = (xmin + W > scan_x) ? (xmin + W - scan_x) : 0;
-                    uint32_t to_write = (run_len < remaining) ? run_len : remaining;
-                    uint32_t to_skip = run_len - to_write;
-                    for (uint32_t i = 0; i < to_write; ++i) {
-                        if (current_channel >= 0 && current_channel < int(chans)) {
-                            // Convert from RLE's bottom-up y to buffer's top-down y
-                            uint32_t buffer_y = (H - 1) - (scan_y - ymin);
-                            img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
-                        }
-                        ++scan_x;
-                    }
-                    scan_x += to_skip;
-                } break;
-                case OPC_EOF:
-                    // Apply colormap if present
-                    if (h.ncmap > 0 && !h.colormap.empty()) {
-                        apply_colormap(img, h);
-                    }
-                    res.ok = true; res.error = Error::OK; res.endian = e; return res;
-                default:
-                    res.error = Error::OPCODE_UNKNOWN; return res;
-            }
-        }
-        // Apply colormap if present (in case EOF wasn't reached normally)
-        if (h.ncmap > 0 && !h.colormap.empty()) {
-            apply_colormap(img, h);
-        }
-        res.ok = true; res.error = Error::OK; res.endian = e; return res;
-    }
+		switch (base) {
+		    case OPC_SKIP_LINES: {
+					     uint16_t lines;
+					     if (longForm) { if (!read_u16(f, e, lines)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
+					     else lines = op1;
+					     scan_y += lines; 
+					     scan_x = xmin; 
+					     current_channel = -1;
+					     continue;
+					 }
+		    case OPC_SET_COLOR: {
+					    if (longForm) { res.error = Error::OPCODE_UNKNOWN; return res; }
+					    uint16_t ch = op1;
+					    int new_channel = (ch == 255 && h.has_alpha()) ? h.ncolors : int(ch);
+					    current_channel = new_channel;
+					    scan_x = xmin;
+					} break;
+		    case OPC_SKIP_PIXELS: {
+					      uint16_t skip;
+					      if (longForm) { if (!read_u16(f, e, skip)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
+					      else skip = op1;
+					      scan_x += skip;
+					  } break;
+		    case OPC_BYTE_DATA: {
+					    uint16_t enc;
+					    if (longForm) { if (!read_u16(f, e, enc)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
+					    else enc = op1;
+					    uint32_t count = uint32_t(enc) + 1;
+					    uint32_t remaining = (xmin + W > scan_x) ? (xmin + W - scan_x) : 0;
+					    uint32_t to_write = (count < remaining) ? count : remaining;
+					    uint32_t to_discard = count - to_write;
+					    for (uint32_t i = 0; i < to_write; ++i) {
+						uint8_t pv;
+						if (!read_u8(f, pv)) { res.error = Error::TRUNCATED_OPCODE; return res; }
+						if (current_channel >= 0 && current_channel < int(chans)) {
+						    // Convert from RLE's bottom-up y to buffer's top-down y
+						    uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+						    img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+						}
+						++scan_x;
+					    }
+					    for (uint32_t i = 0; i < to_discard; ++i) {
+						uint8_t tmp;
+						if (!read_u8(f, tmp)) { res.error = Error::TRUNCATED_OPCODE; return res; }
+						++scan_x;
+					    }
+					    if (count & 1) { uint8_t filler; if (!read_u8(f, filler)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
+					} break;
+		    case OPC_RUN_DATA: {
+					   uint16_t enc;
+					   if (longForm) { if (!read_u16(f, e, enc)) { res.error = Error::TRUNCATED_OPCODE; return res; } }
+					   else enc = op1;
+					   uint32_t run_len = uint32_t(enc) + 1;
+					   uint16_t word;
+					   if (!read_u16(f, e, word)) { res.error = Error::TRUNCATED_OPCODE; return res; }
+					   uint8_t pv = uint8_t(word & 0xFF);
+					   uint32_t remaining = (xmin + W > scan_x) ? (xmin + W - scan_x) : 0;
+					   uint32_t to_write = (run_len < remaining) ? run_len : remaining;
+					   uint32_t to_skip = run_len - to_write;
+					   for (uint32_t i = 0; i < to_write; ++i) {
+					       if (current_channel >= 0 && current_channel < int(chans)) {
+						   // Convert from RLE's bottom-up y to buffer's top-down y
+						   uint32_t buffer_y = (H - 1) - (scan_y - ymin);
+						   img.pixel(scan_x - xmin, buffer_y)[current_channel] = pv;
+					       }
+					       ++scan_x;
+					   }
+					   scan_x += to_skip;
+				       } break;
+		    case OPC_EOF:
+				       // Apply colormap if present
+				       if (h.ncmap > 0 && !h.colormap.empty()) {
+					   apply_colormap(img, h);
+				       }
+				       res.ok = true; res.error = Error::OK; res.endian = e; return res;
+		    default:
+				       res.error = Error::OPCODE_UNKNOWN; return res;
+		}
+	    }
+	    // Apply colormap if present (in case EOF wasn't reached normally)
+	    if (h.ncmap > 0 && !h.colormap.empty()) {
+		apply_colormap(img, h);
+	    }
+	    res.ok = true; res.error = Error::OK; res.endian = e; return res;
+	}
 
-private:
-    static void apply_colormap(Image& img, const Header& h) {
-        // Apply colormap transformation to pixel data
-        // Colormap layout: [channel0_entries...][channel1_entries...][channel2_entries...]
-        // where each channel has (1 << h.cmaplen) entries
-        
-        if (h.ncmap == 0 || h.colormap.empty()) return;
-        
-        const size_t map_length = size_t(1) << h.cmaplen;
-        const size_t num_pixels = size_t(h.width()) * h.height();
-        const uint8_t num_channels = h.channels();
-        
-        // For each pixel, apply colormap to color channels (not alpha)
-        for (size_t i = 0; i < num_pixels; ++i) {
-            uint8_t* pixel = img.pixels.data() + i * num_channels;
-            
-            if (h.ncmap == 1) {
-                // Single colormap for grayscale: apply to first channel only
-                uint8_t index = pixel[0];
-                if (index < map_length && index < h.colormap.size()) {
-                    pixel[0] = uint8_t(h.colormap[index] >> 8);
-                }
-            } else if (h.ncmap >= 3 && h.ncolors >= 3) {
-                // Separate colormaps for RGB channels
-                for (uint8_t c = 0; c < 3 && c < h.ncolors; ++c) {
-                    uint8_t index = pixel[c];
-                    size_t cmap_offset = c * map_length;
-                    if (index < map_length && (cmap_offset + index) < h.colormap.size()) {
-                        pixel[c] = uint8_t(h.colormap[cmap_offset + index] >> 8);
-                    }
-                }
-            }
-            // Alpha channel is never affected by colormap
-        }
-    }
+    private:
+	static void apply_colormap(Image& img, const Header& h) {
+	    // Apply colormap transformation to pixel data
+	    // Colormap layout: [channel0_entries...][channel1_entries...][channel2_entries...]
+	    // where each channel has (1 << h.cmaplen) entries
+
+	    if (h.ncmap == 0 || h.colormap.empty()) return;
+
+	    const size_t map_length = size_t(1) << h.cmaplen;
+	    const size_t num_pixels = size_t(h.width()) * h.height();
+	    const uint8_t num_channels = h.channels();
+
+	    // For each pixel, apply colormap to color channels (not alpha)
+	    for (size_t i = 0; i < num_pixels; ++i) {
+		uint8_t* pixel = img.pixels.data() + i * num_channels;
+
+		if (h.ncmap == 1) {
+		    // Single colormap for grayscale: apply to first channel only
+		    uint8_t index = pixel[0];
+		    if (index < map_length && index < h.colormap.size()) {
+			pixel[0] = uint8_t(h.colormap[index] >> 8);
+		    }
+		} else if (h.ncmap >= 3 && h.ncolors >= 3) {
+		    // Separate colormaps for RGB channels
+		    for (uint8_t c = 0; c < 3 && c < h.ncolors; ++c) {
+			uint8_t index = pixel[c];
+			size_t cmap_offset = c * map_length;
+			if (index < map_length && (cmap_offset + index) < h.colormap.size()) {
+			    pixel[c] = uint8_t(h.colormap[cmap_offset + index] >> 8);
+			}
+		    }
+		}
+		// Alpha channel is never affected by colormap
+	    }
+	}
 };
 
 /* ----- Convenience RGB helpers ----- */
 inline bool write_rgb(FILE* f,
-                      const uint8_t* interleaved,
-                      uint32_t width,
-                      uint32_t height,
-                      const std::vector<std::string>& comments,
-                      const std::vector<uint8_t>& background,
-                      bool include_alpha,
-                      Encoder::BackgroundMode bg_mode,
-                      Error& err) {
+	const uint8_t* interleaved,
+	uint32_t width,
+	uint32_t height,
+	const std::vector<std::string>& comments,
+	const std::vector<uint8_t>& background,
+	bool include_alpha,
+	Encoder::BackgroundMode bg_mode,
+	Error& err) {
     Header h;
     h.xpos = 0; h.ypos = 0;
     h.xlen = width; h.ylen = height;
@@ -810,25 +810,25 @@ inline bool write_rgb(FILE* f,
 
     size_t pixCount = size_t(width) * height;
     if (!include_alpha) {
-        std::memcpy(img.pixels.data(), interleaved, pixCount * 3);
+	std::memcpy(img.pixels.data(), interleaved, pixCount * 3);
     } else {
-        for (size_t i = 0; i < pixCount; ++i) {
-            img.pixels[4*i+0] = interleaved[4*i+0];
-            img.pixels[4*i+1] = interleaved[4*i+1];
-            img.pixels[4*i+2] = interleaved[4*i+2];
-            img.pixels[4*i+3] = interleaved[4*i+3];
-        }
+	for (size_t i = 0; i < pixCount; ++i) {
+	    img.pixels[4*i+0] = interleaved[4*i+0];
+	    img.pixels[4*i+1] = interleaved[4*i+1];
+	    img.pixels[4*i+2] = interleaved[4*i+2];
+	    img.pixels[4*i+3] = interleaved[4*i+3];
+	}
     }
     return Encoder::write(f, img, bg_mode, err);
 }
 
 inline bool read_rgb(FILE* f,
-                     std::vector<uint8_t>& interleaved,
-                     uint32_t& width,
-                     uint32_t& height,
-                     bool* has_alpha_out,
-                     std::vector<std::string>* comments_out,
-                     Error& err) {
+	std::vector<uint8_t>& interleaved,
+	uint32_t& width,
+	uint32_t& height,
+	bool* has_alpha_out,
+	std::vector<std::string>* comments_out,
+	Error& err) {
     Image img;
     DecoderResult dr = Decoder::read(f, img);
     if (!dr.ok) { err = dr.error; return false; }
@@ -839,11 +839,11 @@ inline bool read_rgb(FILE* f,
 
     size_t pixCount = size_t(width) * height;
     if (!img.header.has_alpha()) {
-        interleaved.resize(pixCount * 3);
-        std::memcpy(interleaved.data(), img.pixels.data(), pixCount * 3);
+	interleaved.resize(pixCount * 3);
+	std::memcpy(interleaved.data(), img.pixels.data(), pixCount * 3);
     } else {
-        interleaved.resize(pixCount * 4);
-        std::memcpy(interleaved.data(), img.pixels.data(), pixCount * 4);
+	interleaved.resize(pixCount * 4);
+	std::memcpy(interleaved.data(), img.pixels.data(), pixCount * 4);
     }
     err = Error::OK;
     return true;
@@ -878,8 +878,8 @@ inline std::string rle_utc_timestamp() {
 
     char buf[32];
     std::snprintf(buf, sizeof(buf),
-                  "%04d-%02d-%02dT%02d:%02d:%02dZ",
-                  year, month, day, hour, minute, second);
+	    "%04d-%02d-%02dT%02d:%02d:%02dZ",
+	    year, month, day, hour, minute, second);
     return std::string(buf);
 }
 #endif /* RLE_TIMESTAMP_ENABLED */
@@ -887,3 +887,13 @@ inline std::string rle_utc_timestamp() {
 } /* namespace rle */
 
 #endif /* BRLCAD_RLE_HPP */
+
+// Local Variables:
+// tab-width: 8
+// mode: C++
+// c-basic-offset: 4
+// indent-tabs-mode: t
+// c-file-style: "stroustrup"
+// End:
+// ex: shiftwidth=4 tabstop=8 cino=N-s
+
