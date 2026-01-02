@@ -55,10 +55,15 @@ int main(int argc, char** argv) {
     fprintf(out, "P6\n%u %u\n255\n", img.header.width(), img.header.height());
     
     // Write pixel data (RGB only, ignore alpha if present)
-    // The decoder now stores pixels in top-down order (matching PPM format),
-    // so we can write them directly without reversing.
-    for (size_t y = 0; y < img.header.height(); y++) {
-        for (size_t x = 0; x < img.header.width(); x++) {
+    // The decoder stores pixels in RLE's bottom-up order (y=0 at bottom).
+    // PPM format expects top-down order (y=0 at top), so we need to invert.
+    // We write rows in reverse order: start from the last row (top of image)
+    // and write down to the first row (bottom of image).
+    uint32_t height = img.header.height();
+    for (uint32_t row = 0; row < height; row++) {
+        // Convert PPM row (top-down) to RLE buffer row (bottom-up)
+        uint32_t y = height - 1 - row;
+        for (uint32_t x = 0; x < img.header.width(); x++) {
             const uint8_t* p = img.pixel(x, y);
             if (img.header.ncolors >= 3) {
                 fwrite(p, 1, 3, out);
