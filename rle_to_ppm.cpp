@@ -59,8 +59,11 @@ int main(int argc, char** argv) {
     // PPM format expects top-down order (y=0 at top), so we need to invert.
     // We write rows in reverse order: start from the last row (top of image)
     // and write down to the first row (bottom of image).
-    for (int y = int(img.header.height()) - 1; y >= 0; y--) {
-        for (size_t x = 0; x < img.header.width(); x++) {
+    uint32_t height = img.header.height();
+    for (uint32_t row = 0; row < height; row++) {
+        // Convert PPM row (top-down) to RLE buffer row (bottom-up)
+        uint32_t y = height - 1 - row;
+        for (uint32_t x = 0; x < img.header.width(); x++) {
             const uint8_t* p = img.pixel(x, y);
             if (img.header.ncolors >= 3) {
                 fwrite(p, 1, 3, out);
