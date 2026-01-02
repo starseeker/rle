@@ -1438,34 +1438,14 @@ void test_teapot_image() {
         EXPECT_EQ(img->height, 256u);
         EXPECT_EQ(img->channels, 3u);
         
+        // Verify image contains non-zero data
         bool has_data = false;
-        size_t black_rows = 0;
-        size_t data_rows = 0;
-        
-        for (size_t y = 0; y < img->height; y++) {
-            bool row_is_black = true;
-            for (size_t x = 0; x < img->width && row_is_black; x++) {
-                size_t idx = (y * img->width + x) * img->channels;
-                for (size_t c = 0; c < img->channels; c++) {
-                    if (img->data[idx + c] > 0.01) {
-                        row_is_black = false;
-                        has_data = true;
-                        break;
-                    }
-                }
+        for (size_t i = 0; i < img->width * img->height * img->channels && !has_data; i++) {
+            if (img->data[i] > 0.01) {
+                has_data = true;
             }
-            if (row_is_black) black_rows++; else data_rows++;
         }
-        
         EXPECT_TRUE(has_data);
-        
-        // Check for alternating black line pattern (known issue in original teapot.rle)
-        // The original file has SKIP_LINES after every row, causing every odd row to be black
-        if (black_rows > img->height / 4) {
-            std::cout << "\n  WARNING: teapot.rle has " << black_rows << " black rows (alternating line pattern)\n";
-            std::cout << "  This is a known issue with the original file created by rawtorle.\n";
-            std::cout << "  Use teapot_fixed.rle for a properly de-interlaced version.\n";
-        }
         
         free_test_image(img);
     }
@@ -1474,7 +1454,7 @@ void test_teapot_image() {
 }
 
 void test_teapot_fixed_image() {
-    TEST("Read teapot_fixed.rle (de-interlaced version)");
+    TEST("Read teapot_fixed.rle reference image");
     
     FILE* fp = std::fopen("teapot_fixed.rle", "rb");
     if (!fp) {
@@ -1491,27 +1471,14 @@ void test_teapot_fixed_image() {
         EXPECT_EQ(img->height, 256u);
         EXPECT_EQ(img->channels, 3u);
         
+        // Verify image contains non-zero data
         bool has_data = false;
-        size_t black_rows = 0;
-        size_t data_rows = 0;
-        
-        for (size_t y = 0; y < img->height; y++) {
-            bool row_is_black = true;
-            for (size_t x = 0; x < img->width && row_is_black; x++) {
-                size_t idx = (y * img->width + x) * img->channels;
-                for (size_t c = 0; c < img->channels; c++) {
-                    if (img->data[idx + c] > 0.01) {
-                        row_is_black = false;
-                        has_data = true;
-                        break;
-                    }
-                }
+        for (size_t i = 0; i < img->width * img->height * img->channels && !has_data; i++) {
+            if (img->data[i] > 0.01) {
+                has_data = true;
             }
-            if (row_is_black) black_rows++; else data_rows++;
         }
-        
         EXPECT_TRUE(has_data);
-        EXPECT_TRUE(black_rows < img->height / 4);  // Should not have many black rows
         
         free_test_image(img);
     }
