@@ -619,22 +619,11 @@ class Decoder {
 	    /* COORDINATE SYSTEM CLARIFICATION:
 	     * 
 	     * The RLE specification states that y=0 is at the BOTTOM of the image (like OpenGL).
-	     * This caused confusion in the original implementation:
-	     * 
-	     * ORIGINAL (WRONG) INTERPRETATION:
-	     * - Decoder stored pixels directly at scan_y (bottom-up storage)
-	     * - Assumed output tools would flip the image when displaying
-	     * - Result: Image data stored upside-down in memory
-	     * 
-	     * CORRECT INTERPRETATION (matching ImageMagick/Utah RLE reference):
+	     * To match the existing ImageMagick/Utah RLE behavior when bringing data into memory:
 	     * - scan_y tracks RLE's logical scanline number (0 = bottom)
 	     * - Decoder CONVERTS to standard top-down buffer coordinates during write
 	     * - Conversion formula: buffer_y = (H - 1) - (scan_y - ymin)
 	     * - Result: Image stored right-side-up in standard row-major format
-	     * 
-	     * This is evident in ImageMagick rle.c line 444:
-	     *   offset = ((image->rows - y - 1) * image->columns * number_planes) + ...
-	     * where 'y' is the RLE scanline (0=bottom) and (rows-y-1) converts to buffer row.
 	     * 
 	     * SCANLINE ADVANCEMENT:
 	     * The spec doesn't explicitly state this, but encoders MUST emit SkipLines opcodes
